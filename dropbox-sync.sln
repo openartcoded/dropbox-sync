@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32319.34
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DropboxSync.UIL", "DropboxSync.UIL\DropboxSync.UIL.csproj", "{6F3BB86B-2B88-47C7-A9F7-6DF2FC7F7592}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DropboxSync.BLL", "DropboxSync.BLL\DropboxSync.BLL.csproj", "{4D6A2B11-B013-4BA7-87A4-6E2F34935A9D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DropboxSync.DAL", "DropboxSync.DAL\DropboxSync.DAL.csproj", "{B74CF766-3F4B-400F-A984-059C05E15995}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "10 DAL", "10 DAL", "{419C0522-FE9B-4812-9E87-C0C9BB41EB9D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "20 BLL", "20 BLL", "{75151279-9284-49E4-BB2D-630E4D6B69E7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "30 UIL", "30 UIL", "{E5E07674-12A2-4270-A5D8-AA4317C1A612}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6F3BB86B-2B88-47C7-A9F7-6DF2FC7F7592}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F3BB86B-2B88-47C7-A9F7-6DF2FC7F7592}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F3BB86B-2B88-47C7-A9F7-6DF2FC7F7592}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F3BB86B-2B88-47C7-A9F7-6DF2FC7F7592}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D6A2B11-B013-4BA7-87A4-6E2F34935A9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D6A2B11-B013-4BA7-87A4-6E2F34935A9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D6A2B11-B013-4BA7-87A4-6E2F34935A9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D6A2B11-B013-4BA7-87A4-6E2F34935A9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B74CF766-3F4B-400F-A984-059C05E15995}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B74CF766-3F4B-400F-A984-059C05E15995}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B74CF766-3F4B-400F-A984-059C05E15995}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B74CF766-3F4B-400F-A984-059C05E15995}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6F3BB86B-2B88-47C7-A9F7-6DF2FC7F7592} = {E5E07674-12A2-4270-A5D8-AA4317C1A612}
+		{4D6A2B11-B013-4BA7-87A4-6E2F34935A9D} = {75151279-9284-49E4-BB2D-630E4D6B69E7}
+		{B74CF766-3F4B-400F-A984-059C05E15995} = {419C0522-FE9B-4812-9E87-C0C9BB41EB9D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B360ED60-87D9-4E31-B72F-CCE9CDA0CED8}
+	EndGlobalSection
+EndGlobal
