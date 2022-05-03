@@ -8,11 +8,13 @@
 
   <ItemGroup>
     <Folder Include="IServices\" />
-    <Folder Include="Dtos\" />
+    <Folder Include="Entities\" />
+    <Folder Include="Mappers\" />
     <Folder Include="Services\" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="11.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.4">
       <PrivateAssets>all</PrivateAssets>
