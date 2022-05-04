@@ -9,6 +9,7 @@ namespace DropboxSync.BLL.Entities
     public class InvoiceEntity
     {
         public Guid Id { get; set; }
+        public string InvoiceNumber { get; set; } = string.Empty;
         public bool ManualUpload { get; set; }
         public decimal SubTotal { get; set; }
         public decimal Taxes { get; set; }

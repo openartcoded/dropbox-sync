@@ -12,9 +12,9 @@ namespace DropboxSync.BLL.Entities
         public string DropboxPath { get; set; } = string.Empty;
         public string BackUpPath { get; set; } = string.Empty;
 
-        //// Relations
+        // Relations
 
-        //public ICollection<ExpenseEntity> Expenses { get; set; }
+        public ICollection<ExpenseEntity>? Expenses { get; set; }
 
     }
 }
