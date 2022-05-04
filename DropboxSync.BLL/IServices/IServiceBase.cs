@@ -20,7 +20,7 @@ namespace DropboxSync.BLL.IServices
         /// </summary>
         /// <param name="id">ID of type <typeparamref name="TKey"/></param>
         /// <returns>An object of type <typeparamref name="TEntity"/> if any exists. Otherwise return null</returns>
-        TEntity GetById(TKey id);
+        TEntity? GetById(TKey id);
 
         /// <summary>
         /// Attach a new element of type <typeparamref name="TEntity"/> to the context

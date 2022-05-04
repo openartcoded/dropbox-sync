@@ -37,7 +37,7 @@ namespace DropboxSync.BLL.Services
             return _context.Dossiers.ToList();
         }
 
-        public DossierEntity GetById(Guid id)
+        public DossierEntity? GetById(Guid id)
         {
             DossierEntity? entity = _context.Dossiers.Find(id);
 
