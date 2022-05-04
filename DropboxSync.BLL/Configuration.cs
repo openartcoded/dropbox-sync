@@ -10,7 +10,7 @@ namespace DropboxSync.BLL
     {
         public static void Config()
         {
-            // TODO : Mettre en place les injections d'automapper, ef, rabbitmq
+            // Configure injections of Automapper, EFCore, Broker client
         }
     }
 }
