@@ -24,8 +24,7 @@ namespace DropboxSync.BLL.Configurations
                 .HasMaxLength(1000);
 
             builder.Property(d => d.DueVat)
-                .IsRequired(false)
-                .HasColumnType("decimal(18,4)");
+                .IsRequired(false);
 
             builder.Property(d => d.CreatedAt)
                 .IsRequired();
