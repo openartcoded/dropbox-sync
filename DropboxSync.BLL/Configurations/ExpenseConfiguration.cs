@@ -24,12 +24,10 @@ namespace DropboxSync.BLL.Configurations
                 .HasMaxLength(50);
 
             builder.Property(d => d.Price)
-                .IsRequired(false)
-                .HasColumnType("NUMERIC");
+                .IsRequired(false);
 
             builder.Property(d => d.Vat)
-                .IsRequired(false)
-                .HasColumnType("NUMERIC");
+                .IsRequired(false);
 
             builder.Property(d => d.CreatedAt)
                 .IsRequired();
