@@ -24,6 +24,28 @@ namespace DropboxSync.BLL.Configurations
 
             builder.Property(d => d.SubTotal)
                 .IsRequired();
+
+            builder.Property(d => d.Taxes)
+                .IsRequired();
+
+            builder.Property(d => d.InvoiceDate)
+                .IsRequired();
+
+            builder.Property(d => d.DueDate)
+                .IsRequired();
+
+            builder.Property(d => d.Deleted)
+                .IsRequired();
+
+            builder.Property(d => d.CreatedAt)
+                .IsRequired();
+
+            builder.Property(d => d.UpdatedAt)
+                .IsRequired();
+
+            builder.HasOne(d => d.Upload)
+                .WithOne()
+                .IsRequired(false);
         }
     }
 }

@@ -12,7 +12,7 @@ namespace DropboxSync.BLL.Entities
         public string Name { get; set; } = string.Empty;
         public string? Label { get; set; }
         public decimal? Price { get; set; }
-        public decimal Vat { get; set; }
+        public decimal? Vat { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
