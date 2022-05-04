@@ -8,6 +8,8 @@ namespace DropboxSync.BLL.Entities
 {
     public class UploadEntity
     {
-
+        public Guid Id { get; set; }
+        public string DropboxPath { get; set; } = string.Empty;
+        public string BackUpPath { get; set; } = string.Empty;
     }
 }
