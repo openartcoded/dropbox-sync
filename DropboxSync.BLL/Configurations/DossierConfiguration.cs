@@ -32,10 +32,8 @@ namespace DropboxSync.BLL.Configurations
             builder.Property(d => d.UpdatedAt)
                 .IsRequired();
 
-            builder.HasOne(d => d.Upload);
-
-            builder.Property(d => d.Upload)
-                .IsRequired(false);
+            builder.HasOne(d => d.Upload)
+                .WithOne();
 
             builder.Property(d => d.UploadId)
                 .IsRequired(false);

@@ -36,7 +36,8 @@ namespace DropboxSync.BLL.Configurations
                 .IsRequired();
 
             builder.HasMany(d => d.Uploads)
-                .WithMany(d => d.Expenses);
+                .WithMany(d => d.Expenses)
+                .UsingEntity(join => join.ToTable("ExpensesUploads"));
         }
     }
 }

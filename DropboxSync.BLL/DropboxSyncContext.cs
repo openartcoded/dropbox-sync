@@ -1,4 +1,5 @@
-﻿using DropboxSync.BLL.Entities;
+﻿using DropboxSync.BLL.Configurations;
+using DropboxSync.BLL.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -32,7 +33,10 @@ namespace DropboxSync.BLL
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+            modelBuilder.ApplyConfiguration(new DossierConfiguration());
+            modelBuilder.ApplyConfiguration(new ExpenseConfiguration());
+            modelBuilder.ApplyConfiguration(new InvoiceConfiguration());
+            modelBuilder.ApplyConfiguration(new UploadConfiguration());
         }
     }
 }
