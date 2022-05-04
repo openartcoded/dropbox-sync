@@ -14,7 +14,6 @@ namespace DropboxSync.BLL.Entities
         public decimal Taxes { get; set; }
         public DateOnly InvoiceDate { get; set; }
         public DateOnly DueDate { get; set; }
-        public string Version { get; set; } = string.Empty;
         public bool Deleted { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

@@ -11,7 +11,6 @@ namespace DropboxSync.BLL.Entities
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Label { get; set; }
-        public string Version { get; set; } = string.Empty;
         public decimal? Price { get; set; }
         public decimal Vat { get; set; }
         public DateTime CreatedAt { get; set; }
