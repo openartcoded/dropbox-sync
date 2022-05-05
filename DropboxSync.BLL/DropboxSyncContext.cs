@@ -23,7 +23,9 @@ namespace DropboxSync.BLL
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite("Filename=DropboxSyncDatabase.db", options =>
+            string databaseFileName = Environment.GetEnvironmentVariable("DATABASE_FILE_NAME") ?? "DropboxSyncDatabase.db";
+
+            optionsBuilder.UseSqlite($"Filename={databaseFileName}", options =>
             {
                 // Add options
             });
