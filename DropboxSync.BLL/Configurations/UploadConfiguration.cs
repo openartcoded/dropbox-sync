@@ -15,10 +15,16 @@ namespace DropboxSync.BLL.Configurations
         {
             builder.HasKey(d => d.Id);
 
-            builder.Property(d => d.DropboxPath)
+            builder.Property(d => d.DropboxFileId)
                 .IsRequired();
 
-            builder.Property(d => d.BackUpPath)
+            builder.Property(d => d.ContentType)
+                .IsRequired();
+
+            builder.Property(d => d.FileExtention)
+                .IsRequired();
+
+            builder.Property(d => d.FileSize)
                 .IsRequired();
         }
     }
