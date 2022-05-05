@@ -15,6 +15,9 @@ namespace DropboxSync.BLL.Configurations
         {
             builder.HasKey(d => d.Id);
 
+            builder.Property(d => d.OriginalFileName)
+                .IsRequired();
+
             builder.Property(d => d.DropboxFileId)
                 .IsRequired();
 
