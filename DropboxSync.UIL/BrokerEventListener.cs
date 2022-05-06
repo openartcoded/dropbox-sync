@@ -99,11 +99,16 @@ namespace DropboxSync.UIL
                     ExpenseReceivedModel expenseReceived = JsonConvert.DeserializeObject<ExpenseReceivedModel>(jsonObj)
                         ?? throw new NullReferenceException(nameof(expenseReceived));
 
-
                     break;
                 case BrokerEvent.ExpenseLabelUpdated:
+
+                    ExpenseLabelUpdateModel expenseLabelUpdate = JsonConvert.DeserializeObject<ExpenseLabelUpdateModel>(jsonObj)
+                        ?? throw new NullReferenceException(nameof(expenseLabelUpdate));
+
                     break;
                 case BrokerEvent.ExpensePriceUpdated:
+
+
                     break;
                 case BrokerEvent.ExpenseRemoved:
                     break;

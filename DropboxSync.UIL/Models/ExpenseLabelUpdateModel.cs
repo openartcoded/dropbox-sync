@@ -6,11 +6,12 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    public class ExpenseReceivedModel
+    public class ExpenseLabelUpdateModel
     {
         public string ExpenseId { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string[] UploadIds { get; set; } = new string[0];
-        public long Timestamp { get; set; } = 0;
+        public string Label { get; set; } = string.Empty;
+        public decimal PriceHVat { get; set; }
+        public decimal Vat { get; set; }
+        public long Timestamp { get; set; }
     }
 }
