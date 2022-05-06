@@ -66,8 +66,10 @@ namespace DropboxSync.UIL
                 Display.Log($"The event \\{eventName}\\ with version \\{version}\\ is not supported by this app " +
                     $"(supported version :{SUPPORT_EVENT_VERSION})");
             }
-
-            EventRedirection(brokerEvent);
+            else
+            {
+                EventRedirection(brokerEvent);
+            }
         }
 
         private void EventRedirection(BrokerEvent brokerEvent)
