@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
     <Folder Include="Managers\" />
     <Folder Include="BrokerEvents\" />
   </ItemGroup>
