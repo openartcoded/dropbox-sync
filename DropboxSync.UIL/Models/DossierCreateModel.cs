@@ -6,12 +6,10 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class DossierCreateModel
+    internal class DossierCreateModel : DossierModelBase
     {
-        public string DossierId { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public long Timestamp { get; set; }
         public decimal? TvaaDue { get; set; }
     }
 }

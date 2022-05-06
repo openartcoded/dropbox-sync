@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class DossierCloseModel
+    internal class DossierCloseModel : DossierModelBase
     {
-        public string DossierId { get; set; } = string.Empty;
         public string UploadId { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
-        public long Timestamp { get; set; }
     }
 }

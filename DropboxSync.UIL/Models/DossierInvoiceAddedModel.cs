@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class DossierRecallForModificationModel : DossierModelBase
+    internal class DossierInvoiceAddedModel : DossierModelBase
     {
-        public decimal TvaDue { get; set; }
+        public string InvoiceId { get; set; } = string.Empty;
     }
 }
