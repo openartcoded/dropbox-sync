@@ -5,12 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using Amqp;
 using DropboxSync.UIL.Enums;
+using DropboxSync.UIL.Helpers;
 using Newtonsoft.Json.Linq;
 
 namespace DropboxSync.UIL
 {
     public class BrokerEventListener
     {
+        public const int SUPPORT_EVENT_VERSION = 1;
+
         private readonly Connection _connection;
         private readonly string _queue;
 
@@ -47,13 +50,22 @@ namespace DropboxSync.UIL
             string textMessage = Encoding.UTF8.GetString((byte[])message.Body);
 
             JObject jobject = JObject.Parse(textMessage);
-            JToken token = jobject["eventName"] ??
-                throw new NullReferenceException($"Event name could not be foudn!");
+            JToken eventToken = jobject["eventName"] ??
+                throw new NullReferenceException($"Event name could not be found!");
+            JToken versionToken = jobject["version"] ??
+                throw new NullReferenceException($"Event version could not be found!");
 
-            string eventName = token.ToString();
+            string eventName = eventToken.ToString() ?? throw new NullReferenceException(nameof(eventName));
+            int version = StringHelper.KeepOnlyDigits(versionToken.ToString());
+
             BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventName);
+            Display.News($"Event \\{brokerEvent}\\ received!");
 
-            Display.News($"Event \\{brokerEvent}\\ was received!");
+            if (version != SUPPORT_EVENT_VERSION)
+            {
+                Display.Log($"The event \\{eventName}\\ with version \\{version}\\ is not supported by this app " +
+                    $"(supported version :{SUPPORT_EVENT_VERSION})");
+            }
 
             EventRedirection(brokerEvent);
         }
