@@ -1,5 +1,6 @@
 ﻿using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,7 +32,15 @@ namespace DropboxSync.UIL
 
             _queue = queue;
 
-            _connection = connectionFactory.CreateConnection();
+            try
+            {
+                _connection = connectionFactory.CreateConnection();
+            }
+            catch (BrokerUnreachableException e)
+            {
+                
+            }
+
         }
 
         public void Start()

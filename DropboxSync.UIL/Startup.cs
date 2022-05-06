@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL
 {
-    public static class Startup
+    public static class StartUp
     {
         public static IServiceProvider? ServiceProvider { get; private set; }
 
-        public static void ConfigureServices(IServiceCollection services)
+        private static void ConfigureServices(IServiceCollection services)
         {
             string amqpUsername = Environment.GetEnvironmentVariable("AMQP_USERNAME") ?? "root";
             string amqpPassword = Environment.GetEnvironmentVariable("AMQP_PASSWORD") ?? "root";
@@ -23,6 +23,13 @@ namespace DropboxSync.UIL
             BrokerEventListener brokerEventListener = new BrokerEventListener(amqpUsername, amqpPassword, amqpHost, amqpPort, amqpQueue);
             if (brokerEventListener is null) throw new ArgumentNullException(nameof(brokerEventListener));
             brokerEventListener.Start();
+        }
+
+        public static void Build()
+        {
+            ServiceCollection services = new ServiceCollection();
+            ConfigureServices(services);
+            ServiceProvider = services.BuildServiceProvider();
         }
     }
 }
