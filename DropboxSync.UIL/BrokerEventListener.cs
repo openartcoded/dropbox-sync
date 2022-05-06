@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Amqp;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Helpers;
+using DropboxSync.UIL.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace DropboxSync.UIL
@@ -32,17 +34,17 @@ namespace DropboxSync.UIL
             _connection.Closed += Connection_Closed;
         }
 
-        private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
-        {
-            Display.Error("Connection to the broker closed!");
-        }
-
         public void Start()
         {
             Session session = new Session(_connection);
 
             ReceiverLink receiverLink = new ReceiverLink(session, "", _queue);
             receiverLink.Start(200, Message_Received);
+        }
+
+        private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
+        {
+            Display.Error("Connection to the broker closed!");
         }
 
         private void Message_Received(IReceiverLink receiver, Message message)
@@ -68,17 +70,21 @@ namespace DropboxSync.UIL
             }
             else
             {
-                EventRedirection(brokerEvent);
+                EventRedirection(brokerEvent, textMessage);
             }
         }
 
-        private void EventRedirection(BrokerEvent brokerEvent)
+        private void EventRedirection(BrokerEvent brokerEvent, string jsonObj)
         {
+            if (jsonObj is null) throw new ArgumentNullException(nameof(jsonObj));
+
             switch (brokerEvent)
             {
                 case BrokerEvent.ExpenseReceived:
 
-                    
+                    ExpenseReceivedModel expenseReceived = JsonConvert.DeserializeObject<ExpenseReceivedModel>(jsonObj)
+                        ?? throw new NullReferenceException(nameof(expenseReceived));
+
 
                     break;
                 case BrokerEvent.ExpenseLabelUpdated:
