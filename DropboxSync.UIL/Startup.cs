@@ -1,4 +1,5 @@
-﻿using DropboxSync.UIL.Models;
+﻿using DropboxSync.UIL.Managers;
+using DropboxSync.UIL.Models;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -14,6 +15,8 @@ namespace DropboxSync.UIL
 
         private static void ConfigureServices(IServiceCollection services)
         {
+            services.AddTransient<IExpenseManager, ExpenseManager>();
+
             services.AddSingleton<BrokerEventListener>();
         }
 

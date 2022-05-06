@@ -19,13 +19,15 @@ namespace DropboxSync.UIL
         public const int SUPPORT_EVENT_VERSION = 1;
 
         private readonly AmqpCredentialModel _amqpCredentials;
+        private readonly IExpenseManager _expenseManager;
         public Connection? AmqpConnection { get; private set; }
 
         public BrokerEventListener(IExpenseManager expenseManager)
         {
-            if (expenseManager is null) throw new ArgumentNullException(nameof(expenseManager));
-
-            _amqpCredentials = new AmqpCredentialModel();
+            _amqpCredentials = new AmqpCredentialModel() ??
+                throw new NullReferenceException(nameof(AmqpCredentialModel));
+            _expenseManager = expenseManager ??
+                throw new ArgumentNullException(nameof(expenseManager));
         }
 
         public void Initialize()
