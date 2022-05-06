@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using Amqp;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Helpers;
+using DropboxSync.UIL.Managers;
 using DropboxSync.UIL.Models;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -16,29 +18,39 @@ namespace DropboxSync.UIL
     {
         public const int SUPPORT_EVENT_VERSION = 1;
 
-        private readonly Connection _connection;
-        private readonly string _queue;
+        private readonly AmqpCredentialModel _amqpCredentials;
+        public Connection? AmqpConnection { get; private set; }
 
-        public BrokerEventListener(string username, string password, string host, int port, string queue)
+        public BrokerEventListener(IExpenseManager expenseManager)
         {
-            if (string.IsNullOrEmpty(username)) throw new ArgumentNullException(nameof(username));
-            if (string.IsNullOrEmpty(password)) throw new ArgumentNullException(nameof(password));
-            if (string.IsNullOrEmpty(host)) throw new ArgumentNullException(nameof(host));
-            if (string.IsNullOrEmpty(queue)) throw new ArgumentNullException(nameof(queue));
-            if (port <= 0) throw new ArgumentOutOfRangeException(nameof(port));
+            if (expenseManager is null) throw new ArgumentNullException(nameof(expenseManager));
 
-            _queue = queue;
+            _amqpCredentials = new AmqpCredentialModel();
+        }
+
+        public void Initialize()
+        {
+            string username = _amqpCredentials.AmqpUsername;
+            string password = _amqpCredentials.AmqpPassword;
+            string host = _amqpCredentials.AmqpHost;
+            int port = _amqpCredentials.AmqpPort;
+
+            Display.News($"AMQP Connection to host \"{host}\" on port \"{port}\"");
 
             Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
-            _connection = new Connection(address);
-            _connection.Closed += Connection_Closed;
+            AmqpConnection = new Connection(address);
+
+            Display.News($"AMQP Connection established!");
+            AmqpConnection.Closed += Connection_Closed;
         }
 
         public void Start()
         {
-            Session session = new Session(_connection);
+            if (AmqpConnection is null) throw new NullReferenceException(nameof(AmqpConnection));
 
-            ReceiverLink receiverLink = new ReceiverLink(session, "", _queue);
+            Session session = new Session(AmqpConnection);
+
+            ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
             receiverLink.Start(200, Message_Received);
         }
 
