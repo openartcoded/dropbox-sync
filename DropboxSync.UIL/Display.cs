@@ -14,5 +14,12 @@ namespace DropboxSync.UIL
             Console.WriteLine(message);
             Console.ForegroundColor = ConsoleColor.Gray;
         }
+
+        public static void News(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(message);
+            Console.ForegroundColor = ConsoleColor.Gray;
+        }
     }
 }

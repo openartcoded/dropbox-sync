@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Amqp;
+using DropboxSync.UIL.Enums;
+using Newtonsoft.Json.Linq;
 
 namespace DropboxSync.UIL
 {
@@ -43,7 +45,61 @@ namespace DropboxSync.UIL
         private void Message_Received(IReceiverLink receiver, Message message)
         {
             string textMessage = Encoding.UTF8.GetString((byte[])message.Body);
-            Console.WriteLine(textMessage);
+
+            JObject jobject = JObject.Parse(textMessage);
+            JToken token = jobject["eventName"] ??
+                throw new NullReferenceException($"Event name could not be foudn!");
+
+            string eventName = token.ToString();
+            BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventName);
+
+            Display.News($"Event \\{brokerEvent}\\ was received!");
+
+            EventRedirection(brokerEvent);
+        }
+
+        private void EventRedirection(BrokerEvent brokerEvent)
+        {
+            switch (brokerEvent)
+            {
+                case BrokerEvent.ExpenseReceived:
+                    break;
+                case BrokerEvent.ExpenseLabelUpdated:
+                    break;
+                case BrokerEvent.ExpensePriceUpdated:
+                    break;
+                case BrokerEvent.ExpenseRemoved:
+                    break;
+                case BrokerEvent.ExpenseAttachmentRemoved:
+                    break;
+                case BrokerEvent.InvoiceGenerated:
+                    break;
+                case BrokerEvent.InvoiceRemoved:
+                    break;
+                case BrokerEvent.InvoiceRestored:
+                    break;
+                case BrokerEvent.DossierCreated:
+                    break;
+                case BrokerEvent.ExpenseAddedToDossier:
+                    break;
+                case BrokerEvent.ExpenseRemovedFromDossier:
+                    break;
+                case BrokerEvent.InvoiceAddedToDossier:
+                    break;
+                case BrokerEvent.InvoiceRemovedFromDossier:
+                    break;
+                case BrokerEvent.DossierClosed:
+                    break;
+                case BrokerEvent.DossierDeleted:
+                    break;
+                case BrokerEvent.DossierUpdated:
+                    break;
+                case BrokerEvent.DossierRecallForModification:
+                    break;
+                default:
+                    Display.Error($"Event couldn't be chosen!");
+                    break;
+            }
         }
     }
 }
