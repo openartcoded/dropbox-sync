@@ -77,6 +77,9 @@ namespace DropboxSync.UIL
             switch (brokerEvent)
             {
                 case BrokerEvent.ExpenseReceived:
+
+                    
+
                     break;
                 case BrokerEvent.ExpenseLabelUpdated:
                     break;
