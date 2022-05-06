@@ -102,7 +102,7 @@ namespace DropboxSync.UIL
                     break;
                 case BrokerEvent.ExpenseLabelUpdated:
 
-                    ExpenseLabelUpdateModel expenseLabelUpdate = JsonConvert.DeserializeObject<ExpenseLabelUpdateModel>(jsonObj)
+                    ExpenseLabelUpdatedModel expenseLabelUpdate = JsonConvert.DeserializeObject<ExpenseLabelUpdatedModel>(jsonObj)
                         ?? throw new NullReferenceException(nameof(expenseLabelUpdate));
 
                     break;
