@@ -8,6 +8,7 @@ using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Helpers;
 using DropboxSync.UIL.Managers;
 using DropboxSync.UIL.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -18,14 +19,18 @@ namespace DropboxSync.UIL
     {
         public const int SUPPORT_EVENT_VERSION = 1;
 
+        private readonly ILogger _logger;
         private readonly AmqpCredentialModel _amqpCredentials;
         private readonly IExpenseManager _expenseManager;
         private readonly IInvoiceManager _invoiceManager;
         private readonly IDossierManager _dossierManager;
         public Connection? AmqpConnection { get; private set; }
 
-        public BrokerEventListener(IExpenseManager expenseManager, IInvoiceManager invoiceManager, IDossierManager dossierManager)
+        public BrokerEventListener(ILogger<BrokerEventListener> logger, IExpenseManager expenseManager,
+            IInvoiceManager invoiceManager, IDossierManager dossierManager)
         {
+            _logger = logger ??
+                throw new ArgumentNullException(nameof(logger));
             _amqpCredentials = new AmqpCredentialModel() ??
                 throw new NullReferenceException(nameof(AmqpCredentialModel));
             _expenseManager = expenseManager ??
@@ -43,7 +48,8 @@ namespace DropboxSync.UIL
             string host = _amqpCredentials.AmqpHost;
             int port = _amqpCredentials.AmqpPort;
 
-            Display.News($"AMQP Connection to host \"{host}\" on port \"{port}\"");
+            _logger.LogInformation("The AMQP connection to host \"{host}\" on port \"{port}\" has been established!",
+                host, port);
 
             Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
             AmqpConnection = new Connection(address);
@@ -77,14 +83,14 @@ namespace DropboxSync.UIL
                 throw new NullReferenceException(nameof(EventModel));
 
             BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventModel.EventName);
-            Display.News($"Event \"{brokerEvent}\" received!");
+            _logger.LogInformation("Event \"{brokerEvent}\" received", brokerEvent);
 
             int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);
 
             if (eventVersion != SUPPORT_EVENT_VERSION)
             {
-                Display.Log($"The event \"{eventModel.EventName}\" with version \"{eventVersion}\" is not supported by this app " +
-                    $"(supported version :{SUPPORT_EVENT_VERSION})");
+                _logger.LogWarning("The event \"{eventName}\" with version \"{eventVersion}\" is not supported by " +
+                    "this app (supported version: {supportedVersion})", eventModel.EventName, eventVersion, SUPPORT_EVENT_VERSION);
             }
             else
             {
@@ -121,6 +127,7 @@ namespace DropboxSync.UIL
                 // Send a message to the log and return false
                 default:
                     Display.Error($"Event couldn't be chosen!");
+                    _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);
                     return false;
             }
         }

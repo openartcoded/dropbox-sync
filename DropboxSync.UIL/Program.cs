@@ -1,16 +1,23 @@
 ﻿using DropboxSync.UIL;
+using DropboxSync.UIL.Managers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-StartUp.Build();
+var host = new HostBuilder()
+    .ConfigureLogging(logging =>
+    {
+        logging.AddConsole();
+    })
+    .ConfigureServices(services =>
+    {
+        services.AddHostedService<ShutdownManager>();
+        services.AddTransient<IExpenseManager, ExpenseManager>();
+        services.AddTransient<IInvoiceManager, InvoiceManager>();
+        services.AddTransient<IDossierManager, DossierManager>();
+        services.AddSingleton<BrokerEventListener>();
+    })
+    .UseConsoleLifetime()
+    .Build();
 
-Console.ForegroundColor = ConsoleColor.Blue;
-Console.WriteLine("Dropbox synchronisation started");
-Console.ForegroundColor = ConsoleColor.Gray;
-
-BrokerEventListener brokerEventListener = StartUp.ServiceProvider?.GetService<BrokerEventListener>() ??
-    throw new NullReferenceException(nameof(BrokerEventListener));
-
-brokerEventListener.Initialize();
-brokerEventListener.Start();
-
-Console.ReadKey();
+await host.RunAsync();

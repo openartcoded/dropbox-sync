@@ -21,7 +21,7 @@ namespace DropboxSync.UIL.Managers
 
         public bool Redirect(string eventJson)
         {
-            throw new NotImplementedException();
+            return true;
         }
 
         public bool Update(InvoiceModelBase model)
