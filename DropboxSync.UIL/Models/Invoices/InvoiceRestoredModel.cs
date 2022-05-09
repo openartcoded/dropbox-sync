@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DropboxSync.UIL
+namespace DropboxSync.UIL.Models
 {
-    public static class Startup
+    internal class InvoiceRestoredModel
     {
 
     }
