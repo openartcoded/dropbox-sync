@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class ModelBase
+    public class EventModel
     {
         public long Timestamp { get; set; }
+        public string Version { get; set; } = string.Empty;
+        public string EventName { get; set; } = string.Empty;
     }
 }
