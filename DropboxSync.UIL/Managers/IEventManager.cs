@@ -7,7 +7,12 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Managers
 {
-    public interface IExpenseManager : IEventManager<ExpenseModelBase>
+    public interface IEventManager<T>
+        where T : EventModel
     {
+        bool Create(T model);
+        bool Delete(T model);
+        bool Update(T model);
+        void Redirect(string eventJson);
     }
 }
