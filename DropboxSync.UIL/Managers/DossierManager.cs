@@ -19,7 +19,7 @@ namespace DropboxSync.UIL.Managers
             throw new NotImplementedException();
         }
 
-        public void Redirect(string eventJson)
+        public bool Redirect(string eventJson)
         {
             throw new NotImplementedException();
         }

@@ -92,45 +92,36 @@ namespace DropboxSync.UIL
             }
         }
 
-        private void EventRedirection(BrokerEvent brokerEvent, string jsonObj)
+        private bool EventRedirection(BrokerEvent brokerEvent, string jsonObj)
         {
             if (jsonObj is null) throw new ArgumentNullException(nameof(jsonObj));
 
             switch (brokerEvent)
             {
+                // Redirect all expense events with _expenseManager.Redirect()
                 case BrokerEvent.ExpenseReceived:
                 case BrokerEvent.ExpenseLabelUpdated:
                 case BrokerEvent.ExpensePriceUpdated:
                 case BrokerEvent.ExpenseRemoved:
                 case BrokerEvent.ExpenseAttachmentRemoved:
                 case BrokerEvent.ExpenseAddedToDossier:
-                case BrokerEvent.ExpenseRemovedFromDossier:
-                    _expenseManager.Redirect(jsonObj);
-                    break;
+                case BrokerEvent.ExpenseRemovedFromDossier: return _expenseManager.Redirect(jsonObj);
+                // Redirect all Invoice events with _invoiceManager.Redirect()
                 case BrokerEvent.InvoiceGenerated:
-
-                    break;
                 case BrokerEvent.InvoiceRemoved:
-                    break;
                 case BrokerEvent.InvoiceRestored:
-                    break;
-                case BrokerEvent.DossierCreated:
-                    break;
-                case BrokerEvent.InvoiceAddedToDossier:
-                    break;
                 case BrokerEvent.InvoiceRemovedFromDossier:
-                    break;
+                case BrokerEvent.InvoiceAddedToDossier: return _invoiceManager.Redirect(jsonObj);
+                // Redirect all dossier events with _dossierManager.Redirect()
+                case BrokerEvent.DossierCreated:
                 case BrokerEvent.DossierClosed:
-                    break;
                 case BrokerEvent.DossierDeleted:
-                    break;
                 case BrokerEvent.DossierUpdated:
-                    break;
-                case BrokerEvent.DossierRecallForModification:
-                    break;
+                case BrokerEvent.DossierRecallForModification: return _dossierManager.Redirect(jsonObj);
+                // Send a message to the log and return false
                 default:
                     Display.Error($"Event couldn't be chosen!");
-                    break;
+                    return false;
             }
         }
     }

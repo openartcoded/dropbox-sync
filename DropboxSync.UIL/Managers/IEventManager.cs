@@ -13,6 +13,6 @@ namespace DropboxSync.UIL.Managers
         bool Create(T model);
         bool Delete(T model);
         bool Update(T model);
-        void Redirect(string eventJson);
+        bool Redirect(string eventJson);
     }
 }
