@@ -1,14 +1,19 @@
 ﻿using Dropbox.Api;
+using Dropbox.Api.Users;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace DropboxSync.BLL.IServices
 {
+    // TODO : Test the dropbox StartAsync
+    // TODO : Delete all the useless methods
+    // TODO : Add CRUD operations
     public class DropboxService
     {
         private const string LOOPBACK_HOST = "http://localhost:52475/";
@@ -16,6 +21,7 @@ namespace DropboxSync.BLL.IServices
         private readonly ILogger _logger;
         private readonly string _apiKey;
         private readonly string _apiSecret;
+        private readonly string _accessToken;
         private readonly Uri _redirectUrl = new Uri(LOOPBACK_HOST + "authorize");
         private readonly Uri _jsRedirectUrl = new Uri(LOOPBACK_HOST + "token");
 
@@ -30,6 +36,8 @@ namespace DropboxSync.BLL.IServices
                 ?? throw new NullReferenceException("No api key for Dropbox has been registered in the environnement");
             _apiSecret = Environment.GetEnvironmentVariable("DROPBOX_API_SECRET") ??
                 throw new NullReferenceException("No api secret for dropbox has been registered in the environnement");
+            _accessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN")
+                ?? throw new NullReferenceException(nameof(_accessToken));
 
             AccessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN")
                 ?? Task.Run(() => GetDropboxAccessToken()).Result
@@ -37,6 +45,18 @@ namespace DropboxSync.BLL.IServices
             RefreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN")
                 ?? Task.Run(() => GetDropboxRefreshToken()).Result
                 ?? throw new NullReferenceException("No refresh token was obtainable!");
+        }
+
+        public async Task StartAsync()
+        {
+            using (var dropboxClient = new DropboxClient(_accessToken))
+            {
+                FullAccount? full = await dropboxClient.Users.GetCurrentAccountAsync();
+                if (full is null) throw new NullReferenceException(nameof(full));
+
+                _logger.LogInformation("Connected to Dropbox with [Account ID \"{accountId}\" | Email : \"{email}\" | " +
+                    "Display name : \"{name}\"]", full.AccountId, full.Email, full.Name.DisplayName);
+            }
         }
 
         private async Task<string?> GetDropboxAccessToken()
@@ -72,7 +92,7 @@ namespace DropboxSync.BLL.IServices
 
             Environment.SetEnvironmentVariable("DROPBOX_ACCESS_TOKEN", AccessToken);
             Environment.SetEnvironmentVariable("DROPBOX_REFRESH_TOKEN", RefreshToken);
-            Environment.SetEnvironmentVariable("DROPBOX_UID", uid);
+            //Environment.SetEnvironmentVariable("DROPBOX_UID", uid);
 
             http.Stop();
 

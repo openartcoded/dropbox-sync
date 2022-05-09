@@ -1,4 +1,5 @@
-﻿using DropboxSync.UIL;
+﻿using DropboxSync.BLL;
+using DropboxSync.UIL;
 using DropboxSync.UIL.Managers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,6 +13,9 @@ var host = new HostBuilder()
     .ConfigureServices(services =>
     {
         services.AddHostedService<ShutdownManager>();
+
+        services.ConfigureBusinessLayer();
+
         services.AddTransient<IExpenseManager, ExpenseManager>();
         services.AddTransient<IInvoiceManager, InvoiceManager>();
         services.AddTransient<IDossierManager, DossierManager>();

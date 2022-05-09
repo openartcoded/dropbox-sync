@@ -1,4 +1,5 @@
-﻿using DropboxSync.UIL.Models;
+﻿using DropboxSync.BLL.IServices;
+using DropboxSync.UIL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,9 +10,12 @@ namespace DropboxSync.UIL.Managers
 {
     public class ExpenseManager : IExpenseManager
     {
-        public ExpenseManager()
-        {
+        private readonly IExpenseService _expenseService;
 
+        public ExpenseManager(IExpenseService expenseService)
+        {
+            _expenseService = expenseService ??
+                throw new ArgumentNullException(nameof(expenseService));
         }
 
         public bool Create(ExpenseModelBase model)
