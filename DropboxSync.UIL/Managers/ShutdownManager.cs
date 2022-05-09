@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,23 +12,27 @@ namespace DropboxSync.UIL.Managers
     {
         private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger _logger;
 
         public bool PleaseStop { get; private set; }
         public Task? BackgroundTask { get; private set; }
 
 
-        public ShutdownManager(IHostApplicationLifetime applicationLifetime, IServiceProvider serviceProvider)
+        public ShutdownManager(ILogger<ShutdownManager> logger, IHostApplicationLifetime applicationLifetime, IServiceProvider serviceProvider)
         {
             _applicationLifetime = applicationLifetime ??
                 throw new ArgumentNullException(nameof(applicationLifetime));
 
             _serviceProvider = serviceProvider ??
                 throw new ArgumentNullException(nameof(serviceProvider));
+
+            _logger = logger ??
+                throw new ArgumentNullException(nameof(logger));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            Console.WriteLine($"Starting {nameof(ShutdownManager)}");
+            _logger.LogInformation("Starting {class}", nameof(ShutdownManager));
 
             BackgroundTask = Task.Run(async () =>
             {
@@ -36,7 +41,7 @@ namespace DropboxSync.UIL.Managers
                     await Task.Delay(50);
                 }
 
-                Console.WriteLine("Background task successfully stopped!");
+                _logger.LogInformation("Background task successfully stopped!");
             });
 
             if (_serviceProvider is null) throw new NullReferenceException(nameof(_serviceProvider));
@@ -58,12 +63,12 @@ namespace DropboxSync.UIL.Managers
         {
             if (BackgroundTask is null) throw new NullReferenceException(nameof(BackgroundTask));
 
-            Console.WriteLine("Stopping service");
+            _logger.LogInformation("Service stopping...");
 
             PleaseStop = true;
             await BackgroundTask;
 
-            Console.WriteLine("Service stopped");
+            _logger.LogInformation("Service succesfully stopped!");
         }
     }
 }
