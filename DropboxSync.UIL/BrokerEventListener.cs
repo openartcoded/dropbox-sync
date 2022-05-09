@@ -54,7 +54,7 @@ namespace DropboxSync.UIL
             Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
             AmqpConnection = new Connection(address);
 
-            Display.News($"AMQP Connection established!");
+            _logger.LogInformation("AMQP Connection established!");
             AmqpConnection.Closed += Connection_Closed;
         }
 
@@ -70,7 +70,7 @@ namespace DropboxSync.UIL
 
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
         {
-            Display.Error("Connection to the broker closed!");
+            _logger.LogCritical("Connection to the broker closed!");
         }
 
         private void Message_Received(IReceiverLink receiver, Message message)
@@ -126,7 +126,6 @@ namespace DropboxSync.UIL
                 case BrokerEvent.DossierRecallForModification: return _dossierManager.Redirect(jsonObj);
                 // Send a message to the log and return false
                 default:
-                    Display.Error($"Event couldn't be chosen!");
                     _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);
                     return false;
             }
