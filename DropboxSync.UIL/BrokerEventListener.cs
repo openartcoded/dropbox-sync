@@ -20,14 +20,20 @@ namespace DropboxSync.UIL
 
         private readonly AmqpCredentialModel _amqpCredentials;
         private readonly IExpenseManager _expenseManager;
+        private readonly IInvoiceManager _invoiceManager;
+        private readonly IDossierManager _dossierManager;
         public Connection? AmqpConnection { get; private set; }
 
-        public BrokerEventListener(IExpenseManager expenseManager)
+        public BrokerEventListener(IExpenseManager expenseManager, IInvoiceManager invoiceManager, IDossierManager dossierManager)
         {
             _amqpCredentials = new AmqpCredentialModel() ??
                 throw new NullReferenceException(nameof(AmqpCredentialModel));
             _expenseManager = expenseManager ??
                 throw new ArgumentNullException(nameof(expenseManager));
+            _invoiceManager = invoiceManager ??
+                throw new ArgumentNullException(nameof(invoiceManager));
+            _dossierManager = dossierManager
+                ?? throw new ArgumentNullException(nameof(dossierManager));
         }
 
         public void Initialize()
@@ -99,7 +105,7 @@ namespace DropboxSync.UIL
                 case BrokerEvent.ExpenseAttachmentRemoved:
                 case BrokerEvent.ExpenseAddedToDossier:
                 case BrokerEvent.ExpenseRemovedFromDossier:
-                    _expenseManager.RedirectExpenses(jsonObj);
+                    _expenseManager.Redirect(jsonObj);
                     break;
                 case BrokerEvent.InvoiceGenerated:
 
