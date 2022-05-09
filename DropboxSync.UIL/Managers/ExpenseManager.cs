@@ -18,5 +18,10 @@ namespace DropboxSync.UIL.Managers
         {
             throw new NotImplementedException();
         }
+
+        public void RedirectExpenses(string expenseEvent)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

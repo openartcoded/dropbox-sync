@@ -9,6 +9,7 @@ namespace DropboxSync.UIL.Managers
 {
     public interface IExpenseManager
     {
+        void RedirectExpenses(string expenseEvent);
         void CreateExpense(ExpenseReceivedModel expenseReceived);
     }
 }

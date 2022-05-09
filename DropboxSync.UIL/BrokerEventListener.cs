@@ -65,21 +65,19 @@ namespace DropboxSync.UIL
         {
             string textMessage = Encoding.UTF8.GetString((byte[])message.Body);
 
-            JObject jobject = JObject.Parse(textMessage);
-            JToken eventToken = jobject["eventName"] ??
-                throw new NullReferenceException($"Event name could not be found!");
-            JToken versionToken = jobject["version"] ??
-                throw new NullReferenceException($"Event version could not be found!");
+            if (string.IsNullOrEmpty(textMessage)) throw new NullReferenceException(nameof(textMessage));
 
-            string eventName = eventToken.ToString() ?? throw new NullReferenceException(nameof(eventName));
-            int version = StringHelper.KeepOnlyDigits(versionToken.ToString());
+            EventModel eventModel = JsonConvert.DeserializeObject<EventModel>(textMessage) ??
+                throw new NullReferenceException(nameof(EventModel));
 
-            BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventName);
-            Display.News($"Event \\{brokerEvent}\\ received!");
+            BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventModel.EventName);
+            Display.News($"Event \"{brokerEvent}\" received!");
 
-            if (version != SUPPORT_EVENT_VERSION)
+            int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);
+
+            if (eventVersion != SUPPORT_EVENT_VERSION)
             {
-                Display.Log($"The event \\{eventName}\\ with version \\{version}\\ is not supported by this app " +
+                Display.Log($"The event \"{eventModel.EventName}\" with version \"{eventVersion}\" is not supported by this app " +
                     $"(supported version :{SUPPORT_EVENT_VERSION})");
             }
             else
@@ -95,36 +93,22 @@ namespace DropboxSync.UIL
             switch (brokerEvent)
             {
                 case BrokerEvent.ExpenseReceived:
-
-                    ExpenseReceivedModel expenseReceived = JsonConvert.DeserializeObject<ExpenseReceivedModel>(jsonObj)
-                        ?? throw new NullReferenceException(nameof(expenseReceived));
-
-                    break;
                 case BrokerEvent.ExpenseLabelUpdated:
-
-                    ExpenseLabelUpdatedModel expenseLabelUpdate = JsonConvert.DeserializeObject<ExpenseLabelUpdatedModel>(jsonObj)
-                        ?? throw new NullReferenceException(nameof(expenseLabelUpdate));
-
-                    break;
                 case BrokerEvent.ExpensePriceUpdated:
-
-
-                    break;
                 case BrokerEvent.ExpenseRemoved:
-                    break;
                 case BrokerEvent.ExpenseAttachmentRemoved:
+                case BrokerEvent.ExpenseAddedToDossier:
+                case BrokerEvent.ExpenseRemovedFromDossier:
+                    _expenseManager.RedirectExpenses(jsonObj);
                     break;
                 case BrokerEvent.InvoiceGenerated:
+
                     break;
                 case BrokerEvent.InvoiceRemoved:
                     break;
                 case BrokerEvent.InvoiceRestored:
                     break;
                 case BrokerEvent.DossierCreated:
-                    break;
-                case BrokerEvent.ExpenseAddedToDossier:
-                    break;
-                case BrokerEvent.ExpenseRemovedFromDossier:
                     break;
                 case BrokerEvent.InvoiceAddedToDossier:
                     break;
