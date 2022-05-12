@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Amqp;
+using DropboxSync.BLL.IServices;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Helpers;
 using DropboxSync.UIL.Managers;
@@ -24,10 +25,13 @@ namespace DropboxSync.UIL
         private readonly IExpenseManager _expenseManager;
         private readonly IInvoiceManager _invoiceManager;
         private readonly IDossierManager _dossierManager;
+
+        private readonly IDropboxService _dropboxService;
+
         public Connection? AmqpConnection { get; private set; }
 
         public BrokerEventListener(ILogger<BrokerEventListener> logger, IExpenseManager expenseManager,
-            IInvoiceManager invoiceManager, IDossierManager dossierManager)
+            IInvoiceManager invoiceManager, IDossierManager dossierManager, IDropboxService dropboxService)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -39,6 +43,8 @@ namespace DropboxSync.UIL
                 throw new ArgumentNullException(nameof(invoiceManager));
             _dossierManager = dossierManager
                 ?? throw new ArgumentNullException(nameof(dossierManager));
+            _dropboxService = dropboxService ??
+                throw new ArgumentNullException(nameof(dropboxService));
         }
 
         public void Initialize()
@@ -66,6 +72,8 @@ namespace DropboxSync.UIL
 
             ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
             receiverLink.Start(200, Message_Received);
+
+            _dropboxService.GeneratedAuthenticationURL();
         }
 
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)

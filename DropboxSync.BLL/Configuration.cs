@@ -1,4 +1,5 @@
 ﻿using DropboxSync.BLL.IServices;
+using DropboxSync.BLL.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -14,11 +15,11 @@ namespace DropboxSync.BLL
         {
             services.AddScoped<DropboxSyncContext>();
 
-            services.AddScoped<IExpenseService, IExpenseService>();
-            services.AddScoped<IInvoiceService, IInvoiceService>();
-            services.AddScoped<IDossierService, IDossierService>();
+            services.AddScoped<IExpenseService, ExpenseService>();
+            services.AddScoped<IInvoiceService, InvoiceService>();
+            services.AddScoped<IDossierService, DossierService>();
 
-            services.AddScoped<IDropboxService, IDropboxService>();
+            services.AddScoped<IDropboxService, DropboxService>();
             // Configure injections of Automapper
 
             return services;
