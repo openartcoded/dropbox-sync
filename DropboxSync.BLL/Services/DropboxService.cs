@@ -24,7 +24,7 @@ namespace DropboxSync.BLL.Services
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
-            _accessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN") ??
+            _accessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN", EnvironmentVariableTarget.Machine) ??
                 throw new NullReferenceException("The environnement variable [DROPBOX_ACCESS_TOKEN] does not exist " +
                 "or does not contain any value!");
         }

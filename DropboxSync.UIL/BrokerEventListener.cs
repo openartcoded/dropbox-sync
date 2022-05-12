@@ -72,8 +72,6 @@ namespace DropboxSync.UIL
 
             ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
             receiverLink.Start(200, Message_Received);
-
-            _dropboxService.GeneratedAuthenticationURL();
         }
 
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)

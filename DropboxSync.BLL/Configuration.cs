@@ -18,7 +18,8 @@ namespace DropboxSync.BLL
             services.AddScoped<IExpenseService, ExpenseService>();
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddScoped<IDossierService, DossierService>();
-
+            
+            services.AddScoped<IFileService, FileService>();
             services.AddScoped<IDropboxService, DropboxService>();
             // Configure injections of Automapper
 
