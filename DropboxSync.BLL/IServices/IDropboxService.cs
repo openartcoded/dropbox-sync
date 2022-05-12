@@ -8,6 +8,5 @@ namespace DropboxSync.BLL.IServices
 {
     public interface IDropboxService
     {
-        string GeneratedAuthenticationURL();
     }
 }

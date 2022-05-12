@@ -17,34 +17,16 @@ namespace DropboxSync.BLL.Services
     // TODO : Add CRUD operations
     public class DropboxService : IDropboxService
     {
-        private const string LOOPBACK_HOST = "http://localhost:52475/";
-
         private readonly ILogger _logger;
-        private readonly string _apiKey;
-        private readonly string _apiSecret;
         private readonly string _accessToken;
-
-        public string AccessToken { get; private set; } = string.Empty;
-        public string RefreshToken { get; set; } = string.Empty;
-        public string AuthenticationUrl { get; set; } = string.Empty;
 
         public DropboxService(ILogger<DropboxService> logger)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
-            _apiKey = Environment.GetEnvironmentVariable("DROPBOX_API_KEY")
-                ?? throw new NullReferenceException("No api key for Dropbox has been registered in the environnement");
-            _apiSecret = Environment.GetEnvironmentVariable("DROPBOX_API_SECRET") ??
-                throw new NullReferenceException("No api secret for dropbox has been registered in the environnement");
-            //_accessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN")
-            //    ?? throw new NullReferenceException(nameof(_accessToken));
-
-            //AccessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN")
-            //    ?? Task.Run(() => GetDropboxAccessToken()).Result
-            //    ?? throw new NullReferenceException("No access token was obtainable!");
-            //RefreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN")
-            //    ?? Task.Run(() => GetDropboxRefreshToken()).Result
-            //    ?? throw new NullReferenceException("No refresh token was obtainable!");
+            _accessToken = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN") ??
+                throw new NullReferenceException("The environnement variable [DROPBOX_ACCESS_TOKEN] does not exist " +
+                "or does not contain any value!");
         }
 
         public async Task StartAsync()
