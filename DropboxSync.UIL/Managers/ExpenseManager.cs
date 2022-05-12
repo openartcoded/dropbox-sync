@@ -33,6 +33,15 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentException($"To create an expense, {nameof(model)}'s type must be of " +
                     $"type {typeof(ExpenseReceivedModel)}");
 
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            ExpenseReceivedModel? expenseReceived = model as ExpenseReceivedModel;
+
+            foreach (string item in expenseReceived.UploadIds)
+            {
+                _fileService.DownloadFile(item);
+            }
+
             return true;
         }
 

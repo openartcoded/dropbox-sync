@@ -1,5 +1,8 @@
 ﻿using DropboxSync.BLL.Dtos;
+using DropboxSync.Helpers;
 using DropboxSync.BLL.IServices;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -13,47 +16,111 @@ namespace DropboxSync.BLL.Services
 {
     public class FileService : IFileService
     {
+        /// <summary>
+        /// Represent the api-backend service's URL. If no environnement variable named API_BACKEND_URL exists, string
+        /// "http://localhost:9000" is used
+        /// </summary>
         private readonly string API_BACKEND_URL = Environment.GetEnvironmentVariable("API_BACKEND_URL")
             ?? "http://localhost:9000";
+
         private readonly string API_CLIENT_ID = Environment.GetEnvironmentVariable("API_BACKEND_ID")
             ?? "service-account-download";
+
         private readonly string API_CLIENT_SECRET = Environment.GetEnvironmentVariable("API_CLIENT_SECRET")
             ?? "duzp0kzwDHSS2nSO46P3GBGsNnQbx5L3";
+
         private readonly string API_TOKEN_URL = Environment.GetEnvironmentVariable("API_TOKEN_URL")
-            ?? "http://localhost:8000/realm/Artcoded/protocol/openid-connect/token";
-        //?? "http://localhost:8080/realms/Artcoded/protocol/openid-connect/token";
+            ?? "http://localhost:8080/realms/Artcoded/protocol/openid-connect/token";
+
         private readonly string FILE_DOWNLOAD_DIR = Environment.GetEnvironmentVariable("FILE_DOWNLOAD_DIR")
-            ?? @"\data";
+            ?? "Data";
 
-        private const string CONTENT_TYPE = "application/x-www-form-urlencoded";
-
+        private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
 
-        public string Token { get; private set; } = string.Empty;
 
-        public FileService()
+        public FileService(ILogger<FileService> logger)
         {
+            _logger = logger ??
+                throw new ArgumentNullException(nameof(logger));
             _httpClient = new HttpClient();
+
+            if (!Directory.Exists(FILE_DOWNLOAD_DIR))
+            {
+                Directory.CreateDirectory(FILE_DOWNLOAD_DIR);
+            }
         }
 
         public async Task<bool> DownloadFile(string fileId)
         {
-            if (string.IsNullOrEmpty(Token))
+            if (_httpClient.DefaultRequestHeaders.Authorization is null)
             {
-                if (!await GetToken()) throw new Exception("The API Token could not be retrieved!");
+                if (!await GetToken())
+                {
+                    _logger.LogError("{date} | The authentification token could not be retrieved !", DateTime.Now);
+                    return false;
+                }
             }
 
-            string fileDownloadUrl = $"{API_BACKEND_URL}/api/resource/download/id={fileId}";
+            string fileDownloadUrl = $"{API_BACKEND_URL}/api/resource/download?id={fileId}";
 
-            await _httpClient.GetAsync(fileDownloadUrl);
+            HttpResponseMessage response = await _httpClient.GetAsync(fileDownloadUrl);
 
-            HttpResponseMessage response = await _httpClient.GetAsync(API_BACKEND_URL + fileId);
+            if (response is null)
+            {
+                _logger.LogError("{date} | Something went wrong on api call to route \"{fileDownloadUrl}\"",
+                    DateTime.Now, fileDownloadUrl);
+                return false;
+            }
 
-            if (response is null) throw new ArgumentNullException(nameof(response));
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("{date} | The API call was unsuccesfull. Reponse status is \"{responseCode}\"",
+                    DateTime.Now, response.StatusCode);
+                return false;
+            }
 
-            if (!response.IsSuccessStatusCode) return false;
+            if (response.Content is null)
+            {
+                _logger.LogError("{date} | Response content is null!", DateTime.Now);
+                return false;
+            }
 
+            byte[] fileData = await response.Content.ReadAsByteArrayAsync();
 
+            if (fileData is null)
+            {
+                _logger.LogError("{date} | Byte array from file is null", DateTime.Now);
+                return false;
+            }
+
+            string? fileName = response.Content.Headers?.ContentDisposition?.FileName;
+
+            if (string.IsNullOrEmpty(fileName))
+            {
+                _logger.LogError("{date} | The file name for file with ID \"{fileId}\" could not be retrieved!",
+                    DateTime.Now, fileId);
+                return false;
+            }
+
+            fileName = fileName.Replace("\"", "");
+            string fileExtension = fileName.Split('.').Last();
+
+            string? contentType = response.Content.Headers?.ContentType?.MediaType;
+
+            if (string.IsNullOrEmpty(contentType))
+            {
+                _logger.LogError("{date} | The content type for file with ID \"{fileId}\" could not be retrieved!",
+                    DateTime.Now, fileId);
+                return false;
+            }
+
+            string filePath = $"{FILE_DOWNLOAD_DIR}\\{fileId}-{fileName}";
+            await File.WriteAllBytesAsync(filePath, fileData);
+
+            _logger.LogInformation("{date} | File saved at {filepath}", DateTime.Now, filePath);
+
+            // TODO : Save informations about the file in the database
 
             return true;
         }
@@ -71,28 +138,24 @@ namespace DropboxSync.BLL.Services
             parameters.Add("client_id", apiAuthentication.ClientId);
             parameters.Add("client_secret", apiAuthentication.ClientSecret);
 
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, API_TOKEN_URL)
-            {
-                Content = new FormUrlEncodedContent(parameters),
-                Method = HttpMethod.Post,
-            };
-
             var response = await _httpClient.PostAsync(API_TOKEN_URL, new FormUrlEncodedContent(parameters));
 
             if (response is null) throw new NullReferenceException(nameof(response));
 
             if (!response.IsSuccessStatusCode) return false;
 
-            JObject jObj = JObject.Parse(await response.Content.ReadAsStringAsync());
-            if (jObj is null) return false;
+            ApiAuthenticationSuccessDto apiAuthenticationSuccess = JsonConvert
+                .DeserializeObject<ApiAuthenticationSuccessDto>(await response.Content.ReadAsStringAsync());
 
-            JToken? jToken = jObj["access_token"];
-            if (jToken is null) return false;
+            if (apiAuthenticationSuccess is null)
+            {
+                _logger.LogError("{datetime} | Couldn't deserialize the response with value \"{responseValue}\"!",
+                    DateTime.Now, await response.Content.ReadAsStringAsync());
+                return false;
+            }
 
-            string token = jToken.ToString();
-            if (string.IsNullOrEmpty(token)) return false;
-
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+                apiAuthenticationSuccess.AccessToken);
 
             return true;
         }
