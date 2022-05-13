@@ -1,5 +1,7 @@
 ﻿using Dropbox.Api;
 using Dropbox.Api.Check;
+using Dropbox.Api.FileRequests;
+using Dropbox.Api.Files;
 using Dropbox.Api.Users;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
@@ -62,75 +64,38 @@ namespace DropboxSync.BLL.Services
             }
         }
 
-        ~DropboxService()
+        public async Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
+            FileType fileType, string? fileExtension = null)
         {
-            _dropboxClient.Dispose();
-        }
+            if (string.IsNullOrEmpty(absoluteLocalPath)) throw new ArgumentNullException(nameof(absoluteLocalPath));
 
-        public async Task Authenticate()
-        {
-            using var dbx = new DropboxClient("sl.BHeYUEgU5HjiJIpMG5INT-EuVyp2djKnmJXj0yDUrBBLZuc8hfae0O7EktePWcuoPvuPSsMvS6osOJJ9ieMi8fZ-qnrkBWkb6Ux_Q4p7eCF7jrnMR5VZS-awDS_4xmbG9NbVb3LTjCRK");
-
-            var x = await dbx.Files.ListFolderAsync("");
-            var u = await dbx.Users.GetCurrentAccountAsync();
-            Console.WriteLine(u.AccountId);
-            Console.WriteLine(u.Name);
-            Console.WriteLine(u.Email);
-
-            //_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "sl.BHefZqtzmrbzBfIgCAySLCXE22hQFm_dQJtTMMadS6nMjGz098B7LJIzKYYou-z66uzzqajz6HJEvqXQ_CLjdcoiL8UezEyHBd3UuqWvO1Rjo4rNIis7-2zW-RFWH7-k1YN8SSiLSNoh");
-            var v = new { query = "Foo" };
-            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(API_KEY + ":" + API_SECRET);
-            string basic = System.Convert.ToBase64String(plainTextBytes);
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basic);
-
-            var response = await _httpClient.PostAsJsonAsync("https://api.dropboxapi.com/2/check/user", v);
-            _logger.LogInformation(response.ToString());
-        }
-
-        public async Task<bool> SaveFile(string absoluteFilePath, FileType fileType, bool isProcessed = false, DossierEntity? dossier = null)
-        {
-            if (string.IsNullOrEmpty(absoluteFilePath)) throw new ArgumentNullException(nameof(absoluteFilePath));
-
-            if (fileType != FileType.Dossier && dossier is null)
-            {
-                _logger.LogError("{date} | If FileType is not dossier, {dossierEntity} cannot be null!", DateTime.Now, nameof(dossier));
-                throw new ArgumentNullException(nameof(dossier));
-            }
-
-            if (fileType != FileType.Dossier && isProcessed && dossier is null)
-            {
-                _logger.LogError("{date} | If file is processed, a dossier must be assigned!", DateTime.Now);
-                throw new ArgumentNullException(nameof(dossier));
-            }
-
-            if (fileType == FileType.Dossier && dossier is not null)
-            {
-                _logger.LogWarning("{date} | The entity [{dossierEntity}] cannot be instanciated when file type is equals to \"FileType.Dossier\" ",
-                    DateTime.Now, nameof(dossier));
-                return false;
-            }
-
-            if (isProcessed && fileType == FileType.Dossier)
-            {
-                _logger.LogWarning("{date} | A dossier cannot be processed!", DateTime.Now);
-                return false;
-            }
+            string requiredFolder = $"{createdAt.Year}/UNPROCESSED/{fileType.ToString().ToUpper()}";
 
             switch (fileType)
             {
                 case FileType.Invoice:
 
-                    if (isProcessed)
+                    string? folderDropboxPath = await CheckFolderAndCreate(requiredFolder);
+                    if (string.IsNullOrEmpty(folderDropboxPath))
                     {
-                        DateTime creationDate = DateTime.Now;
-                    }
-                    else
-                    {
-                        DateTime creationDate = DateTime.Now;
-
+                        _logger.LogError("{date} | The folder couldn't be checked nor created!", DateTime.Now);
+                        return null;
                     }
 
-                    break;
+                    string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd")}-{fileName}";
+
+                    if (!string.IsNullOrEmpty(fileExtension)) fileDropboxName = string.Join('.', fileDropboxName, fileExtension);
+
+                    FileRequest creationResult = await _dropboxClient.FileRequests.CreateAsync(fileDropboxName, folderDropboxPath);
+                    if (creationResult is null)
+                    {
+                        _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
+                            DateTime.Now, fileName, folderDropboxPath);
+                        return null;
+                    }
+
+                    return creationResult.Id;
+
                 case FileType.Expense:
                     break;
                 case FileType.Dossier:
@@ -138,6 +103,40 @@ namespace DropboxSync.BLL.Services
                 default:
                     break;
             }
+
+            return null;
+        }
+
+        // TODO : Create ARTCODED FOLDER if doesn't exist
+        // TODO : Check if folder has share permissions. Create them otherwise
+        private bool Initialize()
+        {
+            return true;
+        }
+
+        private async Task<string?> CheckFolderAndCreate(string folderName)
+        {
+            if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
+
+            ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync("ARTCODED");
+            if (fileList is null)
+            {
+                _logger.LogError("{date} | An error occurred when trying to list folder \"ARTCODED\"", DateTime.Now);
+                return null;
+            }
+
+            while (fileList.HasMore)
+            {
+                foreach (Metadata file in fileList.Entries)
+                {
+                    if (file.IsFolder && file.Name.Equals(folderName)) return file.AsFolder.PathLower;
+                }
+
+                fileList = await _dropboxClient.Files.ListFolderContinueAsync(fileList.Cursor);
+            }
+
+            CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"ARTCODED/{folderName}");
+            return value.Metadata.PathLower;
         }
 
         private bool CheckDropboxClient()
@@ -165,6 +164,14 @@ namespace DropboxSync.BLL.Services
 
             _logger.LogWarning("{date} | Something wrong happened during echo check. More informations are needed", DateTime.Now);
             return false;
+        }
+
+        /// <summary>
+        /// Dispose <see cref="DropboxClient"/> private property when <see cref="DropboxService"/> is destroyed 
+        /// </summary>
+        ~DropboxService()
+        {
+            _dropboxClient.Dispose();
         }
     }
 }
