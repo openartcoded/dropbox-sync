@@ -86,7 +86,9 @@ namespace DropboxSync.BLL.Services
 
                     if (!string.IsNullOrEmpty(fileExtension)) fileDropboxName = string.Join('.', fileDropboxName, fileExtension);
 
-                    FileRequest creationResult = await _dropboxClient.FileRequests.CreateAsync(fileDropboxName, folderDropboxPath);
+                    var creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
+                        new FileStream(absoluteLocalPath, FileMode.Open));
+
                     if (creationResult is null)
                     {
                         _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
@@ -118,24 +120,32 @@ namespace DropboxSync.BLL.Services
         {
             if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
 
-            ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync("ARTCODED");
+            //SearchV2Result fileList = await _dropboxClient.Files.SearchV2Async($"/ARTCODED");
+            var fileList = await _dropboxClient.Files.ListFolderAsync("/ARTCODED", recursive: true,
+                includeHasExplicitSharedMembers: true, includeMountedFolders: true);
+
             if (fileList is null)
             {
                 _logger.LogError("{date} | An error occurred when trying to list folder \"ARTCODED\"", DateTime.Now);
                 return null;
             }
 
-            while (fileList.HasMore)
+            bool firstOccurence = true;
+
+            do
             {
+                if (!firstOccurence) fileList = await _dropboxClient.Files.ListFolderContinueAsync(fileList.Cursor);
+
                 foreach (Metadata file in fileList.Entries)
                 {
-                    if (file.IsFolder && file.Name.Equals(folderName)) return file.AsFolder.PathLower;
+                    if (file.IsFolder && file.PathDisplay.Equals($"/ARTCODED/{folderName}")) return file.AsFolder.PathLower;
                 }
 
-                fileList = await _dropboxClient.Files.ListFolderContinueAsync(fileList.Cursor);
+                firstOccurence = false;
             }
+            while (fileList.HasMore);
 
-            CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"ARTCODED/{folderName}");
+            CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/ARTCODED/{folderName}");
             return value.Metadata.PathLower;
         }
 
@@ -143,17 +153,8 @@ namespace DropboxSync.BLL.Services
         {
             string query = "Foo";
 
-            Task<EchoResult> taskResult = Task.Run(async () => await _dropboxClient.Check.UserAsync(query));
+            EchoResult? echoResult = Task.Run(async () => await _dropboxClient.Check.UserAsync(query)).Result;
 
-            if (taskResult is null) throw new ArgumentNullException(nameof(taskResult));
-
-            if (!taskResult.IsCompletedSuccessfully)
-            {
-                _logger.LogError("{date} | The Dropbox client check didn't complete successfully!", DateTime.Now);
-                return false;
-            }
-
-            EchoResult? echoResult = taskResult.Result;
             if (echoResult is null)
             {
                 _logger.LogError("{date} | The echo result value is null. The check failed!", DateTime.Now);

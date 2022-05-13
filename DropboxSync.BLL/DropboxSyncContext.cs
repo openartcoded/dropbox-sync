@@ -25,7 +25,9 @@ namespace DropboxSync.BLL
         {
             string databaseFileName = Environment.GetEnvironmentVariable("DATABASE_FILE_NAME") ?? "DropboxSyncDatabase.db";
 
-            optionsBuilder.UseSqlite($"Filename={databaseFileName}", options =>
+            var str = AppDomain.CurrentDomain.BaseDirectory;
+
+            optionsBuilder.UseSqlite($"Filename={str}{databaseFileName}", options =>
             {
                 // Add options
             });

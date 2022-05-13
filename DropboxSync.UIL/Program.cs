@@ -16,6 +16,8 @@ var host = new HostBuilder()
 
         services.ConfigureBusinessLayer();
 
+        services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
         services.AddTransient<IExpenseManager, ExpenseManager>();
         services.AddTransient<IInvoiceManager, InvoiceManager>();
         services.AddTransient<IDossierManager, DossierManager>();

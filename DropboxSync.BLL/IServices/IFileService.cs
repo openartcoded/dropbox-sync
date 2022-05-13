@@ -8,6 +8,6 @@ namespace DropboxSync.BLL.IServices
 {
     public interface IFileService
     {
-        Task<bool> DownloadFile(string fileId);
+        Task<string?> DownloadFile(string fileId);
     }
 }
