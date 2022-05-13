@@ -16,8 +16,10 @@ namespace DropboxSync.UIL.Managers
         private readonly ILogger _logger;
         private readonly IExpenseService _expenseService;
         private readonly IFileService _fileService;
+        private readonly IDropboxService _dropboxService;
 
-        public ExpenseManager(ILogger<ExpenseManager> logger, IExpenseService expenseService, IFileService fileService)
+        public ExpenseManager(ILogger<ExpenseManager> logger, IExpenseService expenseService, IFileService fileService,
+            IDropboxService dropboxService)
         {
             _logger = logger
                 ?? throw new ArgumentNullException(nameof(logger));
@@ -25,6 +27,8 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(expenseService));
             _fileService = fileService
                 ?? throw new ArgumentNullException(nameof(fileService));
+            _dropboxService = dropboxService ??
+                throw new ArgumentNullException(nameof(dropboxService));
         }
 
         public bool Create(ExpenseModelBase model)
@@ -35,13 +39,14 @@ namespace DropboxSync.UIL.Managers
 
             if (model is null) throw new ArgumentNullException(nameof(model));
 
-            ExpenseReceivedModel? expenseReceived = model as ExpenseReceivedModel;
+            if (model is not ExpenseReceivedModel expenseReceived) throw new NullReferenceException(nameof(expenseReceived));
 
             foreach (string item in expenseReceived.UploadIds)
             {
                 _fileService.DownloadFile(item);
             }
 
+            _dropboxService.Authenticate();
             return true;
         }
 

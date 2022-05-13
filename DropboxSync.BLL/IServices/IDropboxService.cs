@@ -8,5 +8,6 @@ namespace DropboxSync.BLL.IServices
 {
     public interface IDropboxService
     {
+        Task Authenticate();
     }
 }
