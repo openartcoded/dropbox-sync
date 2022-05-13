@@ -9,22 +9,22 @@ namespace DropboxSync.UIL.Managers
 {
     public class DossierManager : IDossierManager
     {
-        public bool Create(DossierModelBase model)
+        public bool Create<T>(T entity) where T : DossierCreateModel
         {
             throw new NotImplementedException();
         }
 
-        public bool Delete(DossierModelBase model)
+        public bool Delete<T>(T model) where T : EventModel
         {
             throw new NotImplementedException();
         }
 
-        public bool Redirect(string eventJson)
+        public bool Update<T>(T model) where T : EventModel
         {
             throw new NotImplementedException();
         }
 
-        public bool Update(DossierModelBase model)
+        bool IEventManager.Create<T>(T model)
         {
             throw new NotImplementedException();
         }

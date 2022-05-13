@@ -117,19 +117,30 @@ namespace DropboxSync.UIL
                 case BrokerEvent.ExpenseRemoved:
                 case BrokerEvent.ExpenseAttachmentRemoved:
                 case BrokerEvent.ExpenseAddedToDossier:
-                case BrokerEvent.ExpenseRemovedFromDossier: return _expenseManager.Redirect(jsonObj);
+                case BrokerEvent.ExpenseRemovedFromDossier: return false;
                 // Redirect all Invoice events with _invoiceManager.Redirect()
                 case BrokerEvent.InvoiceGenerated:
+
+                    InvoiceGeneratedModel? invoice = JsonConvert.DeserializeObject<InvoiceGeneratedModel>(jsonObj);
+                    if (invoice is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null!",
+                            DateTime.Now, typeof(InvoiceGeneratedModel));
+                        return false;
+                    }
+
+                    return _invoiceManager.Create(invoice);
+
                 case BrokerEvent.InvoiceRemoved:
                 case BrokerEvent.InvoiceRestored:
                 case BrokerEvent.InvoiceRemovedFromDossier:
-                case BrokerEvent.InvoiceAddedToDossier: return _invoiceManager.Redirect(jsonObj);
+                case BrokerEvent.InvoiceAddedToDossier: 
                 // Redirect all dossier events with _dossierManager.Redirect()
                 case BrokerEvent.DossierCreated:
                 case BrokerEvent.DossierClosed:
                 case BrokerEvent.DossierDeleted:
                 case BrokerEvent.DossierUpdated:
-                case BrokerEvent.DossierRecallForModification: return _dossierManager.Redirect(jsonObj);
+                case BrokerEvent.DossierRecallForModification: 
                 // Send a message to the log and return false
                 default:
                     _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);

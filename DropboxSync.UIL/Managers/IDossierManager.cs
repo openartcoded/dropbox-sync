@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Managers
 {
-    public interface IDossierManager : IEventManager<DossierModelBase>
+    public interface IDossierManager : IEventManager
     {
+        new bool Create<T>(T entity) where T : DossierCreateModel;
     }
 }

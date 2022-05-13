@@ -9,22 +9,22 @@ namespace DropboxSync.UIL.Managers
 {
     internal class InvoiceManager : IInvoiceManager
     {
-        public bool Create(InvoiceModelBase model)
+        public bool Create<T>(T entity) where T : InvoiceGeneratedModel
         {
             throw new NotImplementedException();
         }
 
-        public bool Delete(InvoiceModelBase model)
+        public bool Delete<T>(T model) where T : EventModel
         {
             throw new NotImplementedException();
         }
 
-        public bool Redirect(string eventJson)
+        public bool Update<T>(T model) where T : EventModel
         {
-            return true;
+            throw new NotImplementedException();
         }
 
-        public bool Update(InvoiceModelBase model)
+        bool IEventManager.Create<T>(T model)
         {
             throw new NotImplementedException();
         }
