@@ -60,14 +60,41 @@ namespace DropboxSync.BLL.Services
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
-            _dropboxClient = new DropboxClient(AccessToken);
 
             string? refreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN");
+
             if (string.IsNullOrEmpty(refreshToken))
             {
                 _logger.LogInformation("{date} | Refresh token couldn't be retrieved from environnement variable.", DateTime.Now);
-                InitilizeDropbox();
+
+                Console.WriteLine("Before continuing please follow copy and paste the next url in your web browser. After you accepted everything, " +
+                "please enter the code you received");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("IMPORTANT: DO NOT CHANGE ANYTHING IN THE URL! COPY AND PASTE ONLY THE CODE YOU RECEIVED!");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine($"https://www.dropbox.com/oauth2/authorize?client_id={API_KEY}&response_type=code&token_access_type=offline");
+                string? enteredCode = Console.ReadLine();
+
+                while (string.IsNullOrEmpty(enteredCode))
+                {
+                    Console.WriteLine("Please enter the code!");
+                    enteredCode = Console.ReadLine();
+                }
+
+                Task.Run(async () => await GetAccessToken(enteredCode)).Wait(10000);
+
+                if (string.IsNullOrEmpty(AccessToken)) throw new Exception($"Operation failed. Please read precedent logs to understand " +
+                    $"the error");
             }
+
+            _dropboxClient = new DropboxClient(AccessToken);
+
+            if (!CheckDropboxClient()) throw new Exception($"An error occured during Dropbox Client checkout. Please read the precedent " +
+                $"logs to understand the error");
+
+            if (!Task.Run(async () => await CheckOrCreateRootFolder()).Result)
+                throw new Exception($"An error occured during folder checkout or creation. Please read the precedent logs to understand " +
+                    $"the error");
         }
 
         public async Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
@@ -113,47 +140,6 @@ namespace DropboxSync.BLL.Services
             }
 
             return null;
-        }
-
-        private void InitilizeDropbox()
-        {
-            Console.WriteLine("Before continuing please follow copy and paste the next url in your web browser. After you accepted everything, " +
-                "please enter the code you received");
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("IMPORTANT: DO NOT CHANGE ANYTHING IN THE URL! COPY AND PASTE ONLY THE CODE YOU RECEIVED!");
-            Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine($"https://www.dropbox.com/oauth2/authorize?client_id={API_KEY}&response_type=code&token_access_type=offline");
-            string? enteredCode = Console.ReadLine();
-
-            while (string.IsNullOrEmpty(enteredCode))
-            {
-                Console.WriteLine("Please enter the code!");
-                enteredCode = Console.ReadLine();
-            }
-
-            Task.Run(async () => await GetAccessToken(enteredCode));
-
-            if (string.IsNullOrEmpty(AccessToken))
-            {
-                _logger.LogError("{date} | The operation failed. Please read the precedent logs to understand the error.", DateTime.Now);
-                return;
-            }
-
-            if (!CheckDropboxClient())
-            {
-                _logger.LogError("{date} | An error occured during Dropbox Client checkout. Please read the precedent logs to understand " +
-                    "the error", DateTime.Now);
-                return;
-            }
-
-            // TODO : Initialize root folder
-
-            if (!Task.Run(async () => await CheckOrCreateRootFolder()).Result)
-            {
-                _logger.LogInformation("{date} | An error occured during folder checkout or creation. Please read the precedent " +
-                    "logs to understand the error.", DateTime.Now);
-                return;
-            }
         }
 
         /// <summary>
@@ -379,15 +365,23 @@ namespace DropboxSync.BLL.Services
         {
             string query = "Foo";
 
-            EchoResult? echoResult = Task.Run(async () => await _dropboxClient.Check.UserAsync(query)).Result;
-
-            if (echoResult is null)
+            try
             {
-                _logger.LogError("{date} | The echo result value is null. The check failed!", DateTime.Now);
+                EchoResult? echoResult = Task.Run(async () => await _dropboxClient.Check.UserAsync(query)).Result;
+
+                if (echoResult is null)
+                {
+                    _logger.LogError("{date} | The echo result value is null. The check failed!", DateTime.Now);
+                    return false;
+                }
+
+                if (echoResult.Result.Equals(query)) return true;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "{date} | An exception occured during Dropbox SDK checkout.", DateTime.Now);
                 return false;
             }
-
-            if (echoResult.Result.Equals(query)) return true;
 
             _logger.LogWarning("{date} | Something wrong happened during echo check. More informations are needed", DateTime.Now);
             return false;
