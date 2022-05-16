@@ -31,12 +31,20 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(dropboxService));
         }
 
+        // TODO : 1. Create a local backup
+        // TODO : 2. Create a dropbox backup
+        // TODO : 3. Save information in database
         public bool Create<T>(T entity) where T : ExpenseReceivedModel
         {
             throw new NotImplementedException();
         }
 
-        public bool Delete<T>(T model) where T : EventModel
+        public bool Delete<T>(T entity) where T : ExpenseRemovedModel
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool RemoveExpenseAttachment(ExpenseAttachmentRemovedModel model)
         {
             throw new NotImplementedException();
         }
@@ -46,7 +54,22 @@ namespace DropboxSync.UIL.Managers
             throw new NotImplementedException();
         }
 
+        public bool UpdateLabel(ExpenseLabelUpdatedModel model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool UpdatePrice(ExpensePriceUpdatedModel model)
+        {
+            throw new NotImplementedException();
+        }
+
         bool IEventManager.Create<T>(T model)
+        {
+            throw new NotImplementedException();
+        }
+
+        bool IEventManager.Delete<T>(T model)
         {
             throw new NotImplementedException();
         }

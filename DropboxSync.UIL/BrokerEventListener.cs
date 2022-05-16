@@ -123,11 +123,76 @@ namespace DropboxSync.UIL
                     return _expenseManager.Create(expense);
 
                 case BrokerEvent.ExpenseLabelUpdated:
+
+                    ExpenseLabelUpdatedModel? expenseLabelUpdated = JsonConvert.DeserializeObject<ExpenseLabelUpdatedModel>(jsonObj);
+                    if (expenseLabelUpdated is null)
+                    {
+                        _logger.LogError("{date} | JSON couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(ExpenseLabelUpdatedModel));
+
+                        return false;
+                    }
+
+                    return _expenseManager.UpdateLabel(expenseLabelUpdated);
+
                 case BrokerEvent.ExpensePriceUpdated:
+
+                    ExpensePriceUpdatedModel? expensePriceUpdated = JsonConvert.DeserializeObject<ExpensePriceUpdatedModel>(jsonObj);
+                    if (expensePriceUpdated is null)
+                    {
+                        _logger.LogError("{date} | JSON couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(ExpensePriceUpdatedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.UpdatePrice(expensePriceUpdated);
+
                 case BrokerEvent.ExpenseRemoved:
+
+                    ExpenseRemovedModel? expenseRemoved = JsonConvert.DeserializeObject<ExpenseRemovedModel>(jsonObj);
+                    if (expenseRemoved is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}"
+                            , DateTime.Now, typeof(ExpenseRemovedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.Delete(expenseRemoved);
+
                 case BrokerEvent.ExpenseAttachmentRemoved:
+
+                    ExpenseAttachmentRemovedModel? expenseAttachmentRemoved = JsonConvert.DeserializeObject<ExpenseAttachmentRemovedModel>(jsonObj);
+                    if (expenseAttachmentRemoved is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(ExpenseAttachmentRemovedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.RemoveExpenseAttachment(expenseAttachmentRemoved);
+
                 case BrokerEvent.ExpenseAddedToDossier:
-                case BrokerEvent.ExpenseRemovedFromDossier: return false;
+
+                    DossierExpensesAddedModel? expensesAddedModel = JsonConvert.DeserializeObject<DossierExpensesAddedModel>(jsonObj);
+                    if (expensesAddedModel is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(DossierExpensesAddedModel));
+                        return false;
+                    }
+                    return false;
+
+                case BrokerEvent.ExpenseRemovedFromDossier:
+
+                    DossierExpenseRemovedModel? dossierExpenseRemoved = JsonConvert.DeserializeObject<DossierExpenseRemovedModel>(jsonObj);
+                    if (dossierExpenseRemoved is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(DossierExpenseRemovedModel));
+                        return false;
+                    }
+                    return false;
+
                 // Redirect all Invoice events with _invoiceManager.Redirect()
                 case BrokerEvent.InvoiceGenerated:
 
