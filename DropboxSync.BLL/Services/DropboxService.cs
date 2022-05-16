@@ -56,6 +56,12 @@ namespace DropboxSync.BLL.Services
             get => CheckDropboxClient();
         }
 
+        /// <summary>
+        /// Create an instance of <see cref="DropboxService"/>.
+        /// </summary>
+        /// <param name="logger">Service's <see cref="ILogger"/> implementation</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="Exception"></exception>
         public DropboxService(ILogger<DropboxService> logger)
         {
             _logger = logger ??
