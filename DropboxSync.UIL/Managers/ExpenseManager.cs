@@ -31,7 +31,7 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(dropboxService));
         }
 
-        public bool Create<T>(T model) where T : EventModel
+        public bool Create<T>(T entity) where T : ExpenseReceivedModel
         {
             throw new NotImplementedException();
         }
@@ -42,6 +42,11 @@ namespace DropboxSync.UIL.Managers
         }
 
         public bool Update<T>(T model) where T : EventModel
+        {
+            throw new NotImplementedException();
+        }
+
+        bool IEventManager.Create<T>(T model)
         {
             throw new NotImplementedException();
         }

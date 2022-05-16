@@ -9,5 +9,6 @@ namespace DropboxSync.UIL.Managers
 {
     public interface IExpenseManager : IEventManager
     {
+        new bool Create<T>(T entity) where T : ExpenseReceivedModel;
     }
 }

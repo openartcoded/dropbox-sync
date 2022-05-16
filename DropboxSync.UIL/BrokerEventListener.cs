@@ -113,6 +113,15 @@ namespace DropboxSync.UIL
             {
                 // Redirect all expense events with _expenseManager.Redirect()
                 case BrokerEvent.ExpenseReceived:
+                    ExpenseReceivedModel? expense = JsonConvert.DeserializeObject<ExpenseReceivedModel>(jsonObj);
+                    if (expense is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}", DateTime.Now, typeof(ExpenseReceivedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.Create(expense);
+
                 case BrokerEvent.ExpenseLabelUpdated:
                 case BrokerEvent.ExpensePriceUpdated:
                 case BrokerEvent.ExpenseRemoved:
