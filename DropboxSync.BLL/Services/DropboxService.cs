@@ -4,6 +4,7 @@ using Dropbox.Api.Files;
 using DropboxSync.BLL.IServices;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -23,8 +24,10 @@ namespace DropboxSync.BLL.Services
     // Dossier creation depends on invoices/expenses added to this dossier. On File added to dossier, first it should verify if the dossier exist
     // Files added to dossier : [YEAR]/[DATE-DOSSIER_NAME/[INVOICES/EXPENSES]/[DATE-FILE_NAME.FILE_EXTENSION]
 
-    internal record OAuthRequest(string oauth1_token, string oauth1_token_secret);
-    internal record OAuthResponse(string oauth2_token);
+    internal record AccessTokenResponse(string access_token, string token_type, int expires_in, string refresh_token, string scope,
+        string uid, string account_id);
+
+    internal record RefreshAccessTokenResponse(string access_token, string token_type, int expires_in);
 
     public class DropboxService : IDropboxService
     {
@@ -34,10 +37,19 @@ namespace DropboxSync.BLL.Services
         private readonly string API_SECRET = Environment.GetEnvironmentVariable("DROPBOX_API_SECRET") ??
             "";
 
+        /// <summary>
+        /// Retrieves the declared root folder in Dropbox. If the environnement variable is null then the next folder is used / created:
+        /// <c>OPENARTCODED</c>
+        /// </summary>
+        private readonly string ROOT_FOLDER = Environment.GetEnvironmentVariable("DROPBOX_ROOT_FOLDER") ??
+            "OPENARTCODED";
+
         private readonly ILogger _logger;
         private readonly DropboxClient _dropboxClient;
 
         public string AccessToken { get; private set; } = string.Empty;
+        public string RefreshToken { get; private set; } = string.Empty;
+        public string TokenType { get; set; } = string.Empty;
 
         public bool IsOperational
         {
@@ -60,15 +72,6 @@ namespace DropboxSync.BLL.Services
         public async Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
             FileType fileType, string? fileExtension = null)
         {
-            if (string.IsNullOrEmpty(AccessToken))
-            {
-                if (!await GetAccessToken())
-                {
-                    _logger.LogError("{date} | Access token couldn't be generated!", DateTime.Now);
-                    return null;
-                }
-            }
-
             if (string.IsNullOrEmpty(absoluteLocalPath)) throw new ArgumentNullException(nameof(absoluteLocalPath));
 
             string requiredFolder = $"{createdAt.Year}/UNPROCESSED/{fileType.ToString().ToUpper()}";
@@ -111,56 +114,134 @@ namespace DropboxSync.BLL.Services
             return null;
         }
 
-        // TODO : Create ARTCODED FOLDER if doesn't exist
-        // TODO : Check if folder has share permissions. Create them otherwise
-        private bool Initialize()
+        /// <summary>
+        /// Ask to the Dropbox API a new access token, refresh token and everything else. To make it work, user should manually navigate to the
+        /// given url in the <c>Readme</c> file and retrieve the <c>code</c> received by Dropbox.
+        /// </summary>
+        /// <returns></returns>
+        private async Task GetAccessToken()
         {
-            return true;
+            using HttpClient httpClient = new HttpClient();
+            string authorizationScheme = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{API_KEY}:{API_SECRET}"));
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationScheme);
+
+            KeyValuePair<string, string>[] data = new[]
+            {
+                new KeyValuePair<string, string>("code",""),
+                new KeyValuePair<string, string>("grant_type","authorization_code")
+            };
+
+            FormUrlEncodedContent content = new FormUrlEncodedContent(data);
+            HttpResponseMessage response = await httpClient.PostAsync("https://api.dropboxapi.com/oauth2/token", content);
+            if (response is null)
+            {
+                _logger.LogError("{date} | {responseType} returned null", DateTime.Now, typeof(HttpResponseMessage));
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("{date} | HTTP Request failed with status : \"{status}\".", DateTime.Now, response.StatusCode);
+                return;
+            }
+
+            if (response.Content is null)
+            {
+                _logger.LogError("{date} | HTTP Request content is null", DateTime.Now);
+                return;
+            }
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("{date} | HTTP Request response received : {response}", DateTime.Now, jsonResponse);
+
+            AccessTokenResponse accessTokenResponse = JsonConvert.DeserializeObject<AccessTokenResponse>(jsonResponse);
+            if (accessTokenResponse is null)
+            {
+                _logger.LogError("{date} | Deserialized object of type \"{type}\" is null", DateTime.Now, typeof(AccessTokenResponse));
+                return;
+            }
+
+            if (string.IsNullOrEmpty(accessTokenResponse.access_token))
+            {
+                _logger.LogError("{date} | The access token field in {atResponse} is null or empty!",
+                    DateTime.Now, nameof(accessTokenResponse));
+                return;
+            }
+
+            if (string.IsNullOrEmpty(accessTokenResponse.refresh_token))
+            {
+                _logger.LogError("{date} | The refresh token field in {atResponse} is null or empty!",
+                    DateTime.Now, nameof(accessTokenResponse));
+                return;
+            }
+
+            Environment.SetEnvironmentVariable("DROPBOX_REFRESH_TOKEN", accessTokenResponse.refresh_token);
+            AccessToken = accessTokenResponse.access_token;
         }
 
         /// <summary>
-        /// Retrieve access token from Dropbox API and set <see cref="AccessToken"/> value.
+        /// Retrieves a new access token from Dropbox API. If the <see cref="RefreshToken"/> is <c>null</c> or <c>empty</c> or environnement variable 
+        /// containing the refresh token at <c>DROPBOX_REFRESH_TOKEN</c> is also <c>null</c> or <c>empty</c> then logger displays the error in the 
+        /// console and break the method.
         /// </summary>
-        /// <returns><c>true</c> If a valid access token was retrieved and assigned. <c>false</c> Otherwise</returns>
-        private async Task<bool> GetAccessToken()
+        /// <returns></returns>
+        private async Task RefreshAccessToken()
         {
-            using (HttpClient httpClient = new HttpClient())
+            if (string.IsNullOrEmpty(RefreshToken))
             {
-                string keyAndSecret = $"{API_KEY}:{API_SECRET}";
-                string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(keyAndSecret));
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
-
-                OAuthRequest oAuthRequest = new OAuthRequest(API_KEY, API_SECRET);
-                string serializedRequest = JsonConvert.SerializeObject(oAuthRequest);
-
-                HttpContent content = new StringContent(serializedRequest);
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
-                HttpResponseMessage response = await httpClient.PostAsync("https://api.dropboxapi.com/2/auth/token/from_oauth1", content);
-                if (response is null)
+                RefreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN") ?? "";
+                if (string.IsNullOrEmpty(RefreshToken))
                 {
-                    _logger.LogError("{date} | Api response is null!", DateTime.Now);
-                    return false;
+                    _logger.LogError("{date} | Refresh token couldn't be retrieved from environnement variable. Please follow the tutorial " +
+                        "for proper configuration!", DateTime.Now);
+                    return;
                 }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogWarning("{date} | The request was unsuccessfull and return this : {message}", DateTime.Now, response.Content);
-                    return false;
-                }
-
-                OAuthResponse? oAuthResponse = await response.Content.ReadFromJsonAsync<OAuthResponse>();
-                if (oAuthResponse is null)
-                {
-                    _logger.LogError("{date} | Deserialized response is null!", DateTime.Now);
-                    return false;
-                }
-
-                AccessToken = oAuthResponse.oauth2_token;
-
-                _logger.LogInformation("{date} | Access token has been generated", DateTime.Now);
-                return true;
             }
+
+            using HttpClient httpClient = new HttpClient();
+
+            string authorizationScheme = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{API_KEY}:{API_SECRET}"));
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationScheme);
+
+            KeyValuePair<string, string>[] data = new[]
+            {
+                new KeyValuePair<string, string>("grant_type","refresh_token"),
+                new KeyValuePair<string, string>("refresh_token", RefreshToken)
+            };
+
+            FormUrlEncodedContent content = new FormUrlEncodedContent(data);
+            HttpResponseMessage response = await httpClient.PostAsync("https://api.dropboxapi.com/oauth2/token", content);
+
+            if (response is null)
+            {
+                _logger.LogError("{date} | HTTP Request's response is null", DateTime.Now);
+                return;
+            }
+
+            if (response.Content is null)
+            {
+                _logger.LogError("{date} | HTTP Request's content is null", DateTime.Now);
+                return;
+            }
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrEmpty(jsonResponse))
+            {
+                _logger.LogError("{date} | HTTP Request's content is an empty string!", DateTime.Now);
+                return;
+            }
+
+            RefreshAccessTokenResponse refreshAccessTokenResponse = JsonConvert.DeserializeObject<RefreshAccessTokenResponse>(jsonResponse);
+            if (refreshAccessTokenResponse is null)
+            {
+                _logger.LogError("{date} | HTTP Request's content as json couldn't be deserialized to type {type}",
+                    DateTime.Now, typeof(RefreshAccessTokenResponse));
+                return;
+            }
+
+            AccessToken = refreshAccessTokenResponse.access_token;
+            TokenType = refreshAccessTokenResponse.token_type;
         }
 
         // TODO : Allow Env variable for root folder
