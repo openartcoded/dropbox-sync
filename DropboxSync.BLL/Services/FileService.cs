@@ -106,6 +106,7 @@ namespace DropboxSync.BLL.Services
             fileName = fileName.Replace("\"", "");
             string fileExtension = fileName.Split('.').Last();
 
+            // TODO : Make it really content type
             string? contentType = response.Content.Headers?.ContentType?.MediaType;
 
             if (string.IsNullOrEmpty(contentType))

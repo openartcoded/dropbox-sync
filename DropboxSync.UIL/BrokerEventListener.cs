@@ -89,7 +89,7 @@ namespace DropboxSync.UIL
                 throw new NullReferenceException(nameof(EventModel));
 
             BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventModel.EventName);
-            _logger.LogInformation("Event \"{brokerEvent}\" received", brokerEvent);
+            _logger.LogInformation("{date} | Event \"{brokerEvent}\" received", DateTime.Now, brokerEvent);
 
             int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);
 
@@ -101,6 +101,7 @@ namespace DropboxSync.UIL
             else
             {
                 EventRedirection(brokerEvent, textMessage);
+                _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
             }
         }
 
@@ -134,13 +135,13 @@ namespace DropboxSync.UIL
                 case BrokerEvent.InvoiceRemoved:
                 case BrokerEvent.InvoiceRestored:
                 case BrokerEvent.InvoiceRemovedFromDossier:
-                case BrokerEvent.InvoiceAddedToDossier: 
+                case BrokerEvent.InvoiceAddedToDossier:
                 // Redirect all dossier events with _dossierManager.Redirect()
                 case BrokerEvent.DossierCreated:
                 case BrokerEvent.DossierClosed:
                 case BrokerEvent.DossierDeleted:
                 case BrokerEvent.DossierUpdated:
-                case BrokerEvent.DossierRecallForModification: 
+                case BrokerEvent.DossierRecallForModification:
                 // Send a message to the log and return false
                 default:
                     _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);

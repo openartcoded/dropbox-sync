@@ -116,6 +116,7 @@ namespace DropboxSync.BLL.Services
             return true;
         }
 
+        // TODO : Allow Env variable for root folder
         private async Task<string?> CheckFolderAndCreate(string folderName)
         {
             if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
