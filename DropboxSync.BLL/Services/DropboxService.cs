@@ -35,7 +35,6 @@ namespace DropboxSync.BLL.Services
             "";
 
         private readonly ILogger _logger;
-        private readonly HttpClient _httpClient;
         private readonly DropboxClient _dropboxClient;
 
         public string AccessToken { get; private set; } = string.Empty;
@@ -49,7 +48,6 @@ namespace DropboxSync.BLL.Services
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
-            _httpClient = new HttpClient();
             _dropboxClient = new DropboxClient(AccessToken);
 
             if (!IsOperational)
@@ -120,6 +118,10 @@ namespace DropboxSync.BLL.Services
             return true;
         }
 
+        /// <summary>
+        /// Retrieve access token from Dropbox API and set <see cref="AccessToken"/> value.
+        /// </summary>
+        /// <returns><c>true</c> If a valid access token was retrieved and assigned. <c>false</c> Otherwise</returns>
         private async Task<bool> GetAccessToken()
         {
             using (HttpClient httpClient = new HttpClient())
