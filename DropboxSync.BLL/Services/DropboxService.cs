@@ -104,43 +104,27 @@ namespace DropboxSync.BLL.Services
             if (string.IsNullOrEmpty(absoluteLocalPath)) throw new ArgumentNullException(nameof(absoluteLocalPath));
 
             string requiredFolder = $"{createdAt.Year}/UNPROCESSED/{fileType.ToString().ToUpper()}";
-
-            switch (fileType)
+            string? folderDropboxPath = await CheckFolderAndCreate(requiredFolder);
+            if (string.IsNullOrEmpty(folderDropboxPath))
             {
-                case FileTypes.Invoices:
-
-                    string? folderDropboxPath = await CheckFolderAndCreate(requiredFolder);
-                    if (string.IsNullOrEmpty(folderDropboxPath))
-                    {
-                        _logger.LogError("{date} | The folder couldn't be checked nor created!", DateTime.Now);
-                        return null;
-                    }
-
-                    string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd")}-{fileName}";
-
-                    if (!string.IsNullOrEmpty(fileExtension)) fileDropboxName = string.Join('.', fileDropboxName, fileExtension);
-
-                    var creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
-                        new FileStream(absoluteLocalPath, FileMode.Open));
-
-                    if (creationResult is null)
-                    {
-                        _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
-                            DateTime.Now, fileName, folderDropboxPath);
-                        return null;
-                    }
-
-                    return creationResult.Id;
-
-                case FileTypes.Expenses:
-                    break;
-                case FileTypes.Dossiers:
-                    break;
-                default:
-                    break;
+                _logger.LogError("{date} | The folder couldn't be checked nor created!", DateTime.Now);
+                return null;
             }
 
-            return null;
+            string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd")}-{fileName}";
+            if (!string.IsNullOrEmpty(fileExtension)) fileDropboxName = string.Join('.', fileDropboxName, fileExtension);
+
+            FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
+                        new FileStream(absoluteLocalPath, FileMode.Open));
+
+            if (creationResult is null)
+            {
+                _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
+                    DateTime.Now, fileName, folderDropboxPath);
+                return null;
+            }
+
+            return creationResult.Id;
         }
 
         /// <summary>
