@@ -39,11 +39,17 @@ namespace DropboxSync.UIL.Managers
             throw new NotImplementedException();
         }
 
+        // TODO : 1. Delete file from local backup
+        // TODO : 2. Delete file from Dropbox
+        // TODO : 3. Delete rows from database
         public bool Delete<T>(T entity) where T : ExpenseRemovedModel
         {
             throw new NotImplementedException();
         }
 
+        // TODO : 1. Delete file from local backup
+        // TODO : 2. Delete file from Dropbox
+        // TODO : 3. Delete upload row from database
         public bool RemoveExpenseAttachment(ExpenseAttachmentRemovedModel model)
         {
             throw new NotImplementedException();
@@ -54,11 +60,17 @@ namespace DropboxSync.UIL.Managers
             throw new NotImplementedException();
         }
 
+        // TODO : 1. Save new file over old one in local backup
+        // TODO : 2. Save new file over old one in Dropbox
+        // TODO : 3. Update information in the database
         public bool UpdateLabel(ExpenseLabelUpdatedModel model)
         {
             throw new NotImplementedException();
         }
 
+        // TODO : 1. Save new file over old one in local backup
+        // TODO : 2. Save new file over old one in Dropbox
+        // TODO : 3. Update information in the database
         public bool UpdatePrice(ExpensePriceUpdatedModel model)
         {
             throw new NotImplementedException();
