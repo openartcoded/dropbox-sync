@@ -9,6 +9,6 @@ namespace DropboxSync.BLL.IServices
     public interface IDropboxService
     {
         Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
-            FileType fileType, string? fileExtension = null);
+            FileTypes fileType, string? fileExtension = null);
     }
 }

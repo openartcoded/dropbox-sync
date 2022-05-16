@@ -68,7 +68,7 @@ namespace DropboxSync.UIL.Managers
             };
 
             string? fileDropboxId = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFile(upload.OriginalFileName, DateTime.Now, Path.GetFullPath(result), FileType.Invoice)).Result;
+                await _dropboxService.SaveUnprocessedFile(upload.OriginalFileName, DateTime.Now, Path.GetFullPath(result), FileTypes.Invoices)).Result;
 
             if (fileDropboxId is null)
             {

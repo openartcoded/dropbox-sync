@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.BLL
 {
-    public enum FileType
+    public enum FileTypes
     {
-        Invoice,
-        Expense,
-        Dossier
+        Invoices,
+        Expenses,
+        Dossiers
     }
 }

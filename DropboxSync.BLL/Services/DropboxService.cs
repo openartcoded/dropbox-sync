@@ -51,11 +51,6 @@ namespace DropboxSync.BLL.Services
         public string RefreshToken { get; private set; } = string.Empty;
         public string TokenType { get; set; } = string.Empty;
 
-        public bool IsOperational
-        {
-            get => CheckDropboxClient();
-        }
-
         /// <summary>
         /// Create an instance of <see cref="DropboxService"/>.
         /// </summary>
@@ -104,7 +99,7 @@ namespace DropboxSync.BLL.Services
         }
 
         public async Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
-            FileType fileType, string? fileExtension = null)
+            FileTypes fileType, string? fileExtension = null)
         {
             if (string.IsNullOrEmpty(absoluteLocalPath)) throw new ArgumentNullException(nameof(absoluteLocalPath));
 
@@ -112,7 +107,7 @@ namespace DropboxSync.BLL.Services
 
             switch (fileType)
             {
-                case FileType.Invoice:
+                case FileTypes.Invoices:
 
                     string? folderDropboxPath = await CheckFolderAndCreate(requiredFolder);
                     if (string.IsNullOrEmpty(folderDropboxPath))
@@ -137,9 +132,9 @@ namespace DropboxSync.BLL.Services
 
                     return creationResult.Id;
 
-                case FileType.Expense:
+                case FileTypes.Expenses:
                     break;
-                case FileType.Dossier:
+                case FileTypes.Dossiers:
                     break;
                 default:
                     break;
@@ -386,7 +381,8 @@ namespace DropboxSync.BLL.Services
             catch (Exception e)
             {
                 _logger.LogError(e, "{date} | An exception occured during Dropbox SDK checkout.", DateTime.Now);
-                return false;
+                Task.Run(async () => await RefreshAccessToken()).Wait(10000);
+                return CheckDropboxClient();
             }
 
             _logger.LogWarning("{date} | Something wrong happened during echo check. More informations are needed", DateTime.Now);
