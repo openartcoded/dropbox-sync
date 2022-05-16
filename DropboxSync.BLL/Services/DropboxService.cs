@@ -62,10 +62,11 @@ namespace DropboxSync.BLL.Services
                 throw new ArgumentNullException(nameof(logger));
             _dropboxClient = new DropboxClient(AccessToken);
 
-            if (!IsOperational)
+            string? refreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN");
+            if (string.IsNullOrEmpty(refreshToken))
             {
-                _logger.LogError("{date} | The Dropbox Client check failed!", DateTime.Now);
-                throw new Exception($"Dropbox Access Token, API Key or API Secret is incorrect!");
+                _logger.LogInformation("{date} | Refresh token couldn't be retrieved from environnement variable.", DateTime.Now);
+                InitilizeDropbox();
             }
         }
 
@@ -114,20 +115,63 @@ namespace DropboxSync.BLL.Services
             return null;
         }
 
+        private void InitilizeDropbox()
+        {
+            Console.WriteLine("Before continuing please follow copy and paste the next url in your web browser. After you accepted everything, " +
+                "please enter the code you received");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("IMPORTANT: DO NOT CHANGE ANYTHING IN THE URL! COPY AND PASTE ONLY THE CODE YOU RECEIVED!");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine($"https://www.dropbox.com/oauth2/authorize?client_id={API_KEY}&response_type=code&token_access_type=offline");
+            string? enteredCode = Console.ReadLine();
+
+            while (string.IsNullOrEmpty(enteredCode))
+            {
+                Console.WriteLine("Please enter the code!");
+                enteredCode = Console.ReadLine();
+            }
+
+            Task.Run(async () => await GetAccessToken(enteredCode));
+
+            if (string.IsNullOrEmpty(AccessToken))
+            {
+                _logger.LogError("{date} | The operation failed. Please read the precedent logs to understand the error.", DateTime.Now);
+                return;
+            }
+
+            if (!CheckDropboxClient())
+            {
+                _logger.LogError("{date} | An error occured during Dropbox Client checkout. Please read the precedent logs to understand " +
+                    "the error", DateTime.Now);
+                return;
+            }
+
+            // TODO : Initialize root folder
+
+            if (!Task.Run(async () => await CheckOrCreateRootFolder()).Result)
+            {
+                _logger.LogInformation("{date} | An error occured during folder checkout or creation. Please read the precedent " +
+                    "logs to understand the error.", DateTime.Now);
+                return;
+            }
+        }
+
         /// <summary>
         /// Ask to the Dropbox API a new access token, refresh token and everything else. To make it work, user should manually navigate to the
         /// given url in the <c>Readme</c> file and retrieve the <c>code</c> received by Dropbox.
         /// </summary>
         /// <returns></returns>
-        private async Task GetAccessToken()
+        private async Task GetAccessToken(string code)
         {
+            if (string.IsNullOrEmpty(code)) throw new ArgumentNullException(nameof(code));
+
             using HttpClient httpClient = new HttpClient();
             string authorizationScheme = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{API_KEY}:{API_SECRET}"));
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationScheme);
 
             KeyValuePair<string, string>[] data = new[]
             {
-                new KeyValuePair<string, string>("code",""),
+                new KeyValuePair<string, string>("code",code),
                 new KeyValuePair<string, string>("grant_type","authorization_code")
             };
 
@@ -244,13 +288,65 @@ namespace DropboxSync.BLL.Services
             TokenType = refreshAccessTokenResponse.token_type;
         }
 
+        /// <summary>
+        /// First verify Dropbox if any folder with value of <see cref="ROOT_FOLDER"/> exists. If it doesn't exist, then create the folder.
+        /// </summary>
+        /// <returns><c>true</c> If the folder exists or if the creation went well. <c>false</c> Otherwise</returns>
+        private async Task<bool> CheckOrCreateRootFolder()
+        {
+            ListFolderResult listFolderResult = await _dropboxClient.Files.ListFolderAsync("", recursive: true,
+                includeHasExplicitSharedMembers: true, includeMountedFolders: true);
+
+            if (listFolderResult is null)
+            {
+                _logger.LogError("{date} | Impossible to list folders in Dropbox.", DateTime.Now);
+                return false;
+            }
+
+            bool firstOccurence = true;
+
+            do
+            {
+                if (!firstOccurence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
+
+                foreach (Metadata file in listFolderResult.Entries)
+                {
+                    if (file.IsFolder && file.PathDisplay.Equals($"/{ROOT_FOLDER}"))
+                    {
+                        _logger.LogInformation("{date} | Folder {name} exist.", DateTime.Now, ROOT_FOLDER);
+                        return true;
+                    }
+                }
+            }
+            while (listFolderResult.HasMore);
+
+            CreateFolderResult createFolderResult = await _dropboxClient.Files.CreateFolderV2Async($"/{ROOT_FOLDER}");
+
+            if (createFolderResult is null)
+            {
+                _logger.LogError("{date} | The folder creation result is null", DateTime.Now);
+                return false;
+            }
+
+            bool isFolder = createFolderResult.Metadata.IsFolder;
+
+            if (!isFolder)
+            {
+                _logger.LogError("{date} | Folder was created but it is not a file in Dropbox.", DateTime.Now);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Folder has been created at root level in Dropbox", DateTime.Now);
+            return isFolder;
+        }
+
         // TODO : Allow Env variable for root folder
         private async Task<string?> CheckFolderAndCreate(string folderName)
         {
             if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
 
             //SearchV2Result fileList = await _dropboxClient.Files.SearchV2Async($"/ARTCODED");
-            var fileList = await _dropboxClient.Files.ListFolderAsync("/ARTCODED", recursive: true,
+            ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync("/ARTCODED", recursive: true,
                 includeHasExplicitSharedMembers: true, includeMountedFolders: true);
 
             if (fileList is null)
@@ -278,6 +374,7 @@ namespace DropboxSync.BLL.Services
             return value.Metadata.PathLower;
         }
 
+        // TODO : If access token expired exception happens. Refresh the token
         private bool CheckDropboxClient()
         {
             string query = "Foo";
