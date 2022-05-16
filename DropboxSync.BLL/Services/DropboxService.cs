@@ -1,20 +1,12 @@
 ﻿using Dropbox.Api;
 using Dropbox.Api.Check;
-using Dropbox.Api.FileRequests;
 using Dropbox.Api.Files;
-using Dropbox.Api.Users;
-using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
+using Newtonsoft.Json;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace DropboxSync.BLL.Services
 {
@@ -30,11 +22,12 @@ namespace DropboxSync.BLL.Services
     // Dossier closed : [YEAR]/[DATE-DOSSIER_NAME]/[DOSSIER_ZIP]
     // Dossier creation depends on invoices/expenses added to this dossier. On File added to dossier, first it should verify if the dossier exist
     // Files added to dossier : [YEAR]/[DATE-DOSSIER_NAME/[INVOICES/EXPENSES]/[DATE-FILE_NAME.FILE_EXTENSION]
+
+    internal record OAuthRequest(string oauth1_token, string oauth1_token_secret);
+    internal record OAuthResponse(string oauth2_token);
+
     public class DropboxService : IDropboxService
     {
-        private readonly string ACCESS_TOKEN = Environment.GetEnvironmentVariable("DROPBOX_ACCESS_TOKEN") ??
-            "";
-
         private readonly string API_KEY = Environment.GetEnvironmentVariable("DROPBOX_API_KEY") ??
             "";
 
@@ -44,6 +37,8 @@ namespace DropboxSync.BLL.Services
         private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
         private readonly DropboxClient _dropboxClient;
+
+        public string AccessToken { get; private set; } = string.Empty;
 
         public bool IsOperational
         {
@@ -55,7 +50,7 @@ namespace DropboxSync.BLL.Services
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
             _httpClient = new HttpClient();
-            _dropboxClient = new DropboxClient(ACCESS_TOKEN);
+            _dropboxClient = new DropboxClient(AccessToken);
 
             if (!IsOperational)
             {
@@ -67,6 +62,15 @@ namespace DropboxSync.BLL.Services
         public async Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
             FileType fileType, string? fileExtension = null)
         {
+            if (string.IsNullOrEmpty(AccessToken))
+            {
+                if (!await GetAccessToken())
+                {
+                    _logger.LogError("{date} | Access token couldn't be generated!", DateTime.Now);
+                    return null;
+                }
+            }
+
             if (string.IsNullOrEmpty(absoluteLocalPath)) throw new ArgumentNullException(nameof(absoluteLocalPath));
 
             string requiredFolder = $"{createdAt.Year}/UNPROCESSED/{fileType.ToString().ToUpper()}";
@@ -114,6 +118,47 @@ namespace DropboxSync.BLL.Services
         private bool Initialize()
         {
             return true;
+        }
+
+        private async Task<bool> GetAccessToken()
+        {
+            using (HttpClient httpClient = new HttpClient())
+            {
+                string keyAndSecret = $"{API_KEY}:{API_SECRET}";
+                string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(keyAndSecret));
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
+
+                OAuthRequest oAuthRequest = new OAuthRequest(API_KEY, API_SECRET);
+                string serializedRequest = JsonConvert.SerializeObject(oAuthRequest);
+
+                HttpContent content = new StringContent(serializedRequest);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+                HttpResponseMessage response = await httpClient.PostAsync("https://api.dropboxapi.com/2/auth/token/from_oauth1", content);
+                if (response is null)
+                {
+                    _logger.LogError("{date} | Api response is null!", DateTime.Now);
+                    return false;
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("{date} | The request was unsuccessfull and return this : {message}", DateTime.Now, response.Content);
+                    return false;
+                }
+
+                OAuthResponse? oAuthResponse = await response.Content.ReadFromJsonAsync<OAuthResponse>();
+                if (oAuthResponse is null)
+                {
+                    _logger.LogError("{date} | Deserialized response is null!", DateTime.Now);
+                    return false;
+                }
+
+                AccessToken = oAuthResponse.oauth2_token;
+
+                _logger.LogInformation("{date} | Access token has been generated", DateTime.Now);
+                return true;
+            }
         }
 
         // TODO : Allow Env variable for root folder
