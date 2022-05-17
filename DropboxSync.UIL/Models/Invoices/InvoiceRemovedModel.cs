@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class InvoiceRemovedModel
+    public class InvoiceRemovedModel
     {
         public bool LogicalDelete { get; set; }
     }
