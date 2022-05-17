@@ -80,13 +80,33 @@ namespace DropboxSync.UIL.Managers
             upload.DropboxFileId = fileDropboxId;
 
             entityToRepo.Upload = upload;
+            entityToRepo.Id = Guid.Parse(entity.InvoiceId);
             if (!_invoiceService.SaveChanges()) return false;
 
             return true;
-
         }
 
-        public bool Delete<T>(T model) where T : EventModel
+        public bool Delete<T>(T entity) where T : InvoiceRemovedModel
+        {
+            if (entity is null) throw new ArgumentNullException(nameof(entity));
+
+            InvoiceEntity? entityFromRepo = _invoiceService.GetById(Guid.Parse(entity.InvoiceId));
+            if (entityFromRepo is null)
+            {
+                _logger.LogWarning("{date} | There is no invoice in the database with ID : \"{invoiceId}\"", DateTime.Now, entity.InvoiceId);
+                return false;
+            }
+
+            // TODO : Delete file from dropbox and local
+
+
+            if (entity.LogicalDelete)
+            {
+                entityFromRepo.Deleted = true;
+            }
+        }
+
+        public bool Restore(InvoiceRestoredModel model)
         {
             throw new NotImplementedException();
         }
@@ -97,6 +117,11 @@ namespace DropboxSync.UIL.Managers
         }
 
         bool IEventManager.Create<T>(T model)
+        {
+            throw new NotImplementedException();
+        }
+
+        bool IEventManager.Delete<T>(T model)
         {
             throw new NotImplementedException();
         }
