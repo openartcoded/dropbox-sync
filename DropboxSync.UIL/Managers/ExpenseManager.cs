@@ -84,7 +84,7 @@ namespace DropboxSync.UIL.Managers
                     OriginalFileName = savedFile.FileName,
                     DropboxFileId = dropboxSavedFile.DropboxFileId,
                     DropboxPath = dropboxSavedFile.DropboxFilePath,
-                    Id = Guid.Parse(uploadId)
+                    Id = uploadId
                 };
 
                 expenseEntity.Uploads.Add(upload);
