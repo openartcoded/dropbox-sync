@@ -16,7 +16,7 @@ namespace DropboxSync.BLL.Entities
         public DateTime UpdatedAt { get; set; }
 
         // Relations
-        public string? UploadId { get; set; }
+        public Guid? UploadId { get; set; }
         public UploadEntity? Upload { get; set; }
     }
 }

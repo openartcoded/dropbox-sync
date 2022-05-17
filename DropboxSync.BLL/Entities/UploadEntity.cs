@@ -8,7 +8,8 @@ namespace DropboxSync.BLL.Entities
 {
     public class UploadEntity
     {
-        public string Id { get; set; } = string.Empty;
+        public Guid Id { get; set; }
+        public string UploadId { get; set; } = string.Empty;
         public string OriginalFileName { get; set; } = string.Empty;
         public string DropboxFileId { get; set; } = string.Empty;
         public string DropboxPath { get; set; } = string.Empty;
@@ -20,6 +21,5 @@ namespace DropboxSync.BLL.Entities
         // Relations
 
         public ICollection<ExpenseEntity>? Expenses { get; set; }
-
     }
 }

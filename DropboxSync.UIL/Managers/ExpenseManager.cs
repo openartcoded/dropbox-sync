@@ -84,11 +84,14 @@ namespace DropboxSync.UIL.Managers
                     OriginalFileName = savedFile.FileName,
                     DropboxFileId = dropboxSavedFile.DropboxFileId,
                     DropboxPath = dropboxSavedFile.DropboxFilePath,
-                    Id = uploadId
+                    UploadId = uploadId,
+                    Id = Guid.NewGuid(),
                 };
 
                 expenseEntity.Uploads.Add(upload);
             }
+
+            _expenseService.Create(expenseEntity);
 
             if (!_expenseService.SaveChanges())
             {

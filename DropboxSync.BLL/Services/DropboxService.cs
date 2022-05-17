@@ -116,8 +116,6 @@ namespace DropboxSync.BLL.Services
 
             string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd")}-{fileName}";
 
-            if (!string.IsNullOrEmpty(fileExtension)) fileDropboxName = string.Join('.', fileDropboxName, fileExtension);
-
             FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
                         new FileStream(fileRelativePath, FileMode.Open));
 
@@ -128,7 +126,9 @@ namespace DropboxSync.BLL.Services
                 return finalOuput;
             }
 
-            finalOuput = new DropboxSavedFile(creationResult.Id, creationResult.PathDisplay);
+            string dropboxId = creationResult.Id.Substring(creationResult.Id.IndexOf(':') + 1);
+
+            finalOuput = new DropboxSavedFile(dropboxId, creationResult.PathDisplay);
 
             return finalOuput;
         }
