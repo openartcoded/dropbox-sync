@@ -15,7 +15,7 @@ namespace DropboxSync.BLL.Entities
         public string LocalRelativePath { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
         public string FileExtention { get; set; } = string.Empty;
-        public float FileSize { get; set; }
+        public long FileSize { get; set; }
 
         // Relations
 

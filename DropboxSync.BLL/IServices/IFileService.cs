@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.BLL.IServices
 {
-    public record SavedFile(string RelativePath, string ContentType, string FileName, int FileSize, string? FileExtension = null);
+    public record SavedFile(string RelativePath, string ContentType, string FileName, long FileSize, string? FileExtension = null);
     public interface IFileService
     {
         Task<SavedFile?> DownloadFile(string fileId);

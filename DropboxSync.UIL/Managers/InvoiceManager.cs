@@ -40,50 +40,51 @@ namespace DropboxSync.UIL.Managers
 
         public bool Create<T>(T entity) where T : InvoiceGeneratedModel
         {
-            if (entity is null) throw new ArgumentNullException(nameof(entity));
+            //if (entity is null) throw new ArgumentNullException(nameof(entity));
 
-            var entityToRepo = _mapper.Map<InvoiceEntity>(entity);
-            _invoiceService.Create(entityToRepo);
+            //var entityToRepo = _mapper.Map<InvoiceEntity>(entity);
+            //_invoiceService.Create(entityToRepo);
 
-            string? result = Task.Run(async () => await _fileService.DownloadFile(entity.UploadId)).Result;
-            if (string.IsNullOrEmpty(result))
-            {
-                _logger.LogError("{date} | File couldn't be saved locally", DateTime.Now);
-                return false;
-            }
+            //string? result = Task.Run(async () => await _fileService.DownloadFile(entity.UploadId)).Result;
+            //if (string.IsNullOrEmpty(result))
+            //{
+            //    _logger.LogError("{date} | File couldn't be saved locally", DateTime.Now);
+            //    return false;
+            //}
 
-            FileInfo? infos = new FileInfo(result);
-            if (infos is null)
-            {
-                _logger.LogError("{date} | Could not read file informations", DateTime.Now);
-                return false;
-            }
+            //FileInfo? infos = new FileInfo(result);
+            //if (infos is null)
+            //{
+            //    _logger.LogError("{date} | Could not read file informations", DateTime.Now);
+            //    return false;
+            //}
 
-            UploadEntity upload = new UploadEntity()
-            {
-                ContentType = infos.Extension.Remove(0, 1),
-                FileExtention = infos.Extension,
-                FileSize = infos.Length,
-                OriginalFileName = infos.Name,
-            };
+            //UploadEntity upload = new UploadEntity()
+            //{
+            //    ContentType = infos.Extension.Remove(0, 1),
+            //    FileExtention = infos.Extension,
+            //    FileSize = infos.Length,
+            //    OriginalFileName = infos.Name,
+            //};
 
-            string? fileDropboxId = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFile(upload.OriginalFileName, DateTime.Now, Path.GetFullPath(result), FileTypes.Invoices)).Result;
+            //string? fileDropboxId = Task.Run(async () =>
+            //    await _dropboxService.SaveUnprocessedFile(upload.OriginalFileName, DateTime.Now, Path.GetFullPath(result), FileTypes.Invoices)).Result;
 
-            if (fileDropboxId is null)
-            {
-                _logger.LogWarning("{date} | The file couldn't be saved in dropbox but is saved locally at path \"{filePath}\"",
-                    DateTime.Now, Path.GetFullPath(result));
-                return false;
-            }
+            //if (fileDropboxId is null)
+            //{
+            //    _logger.LogWarning("{date} | The file couldn't be saved in dropbox but is saved locally at path \"{filePath}\"",
+            //        DateTime.Now, Path.GetFullPath(result));
+            //    return false;
+            //}
 
-            upload.DropboxFileId = fileDropboxId;
+            //upload.DropboxFileId = fileDropboxId;
 
-            entityToRepo.Upload = upload;
-            entityToRepo.Id = Guid.Parse(entity.InvoiceId);
-            if (!_invoiceService.SaveChanges()) return false;
+            //entityToRepo.Upload = upload;
+            //entityToRepo.Id = Guid.Parse(entity.InvoiceId);
+            //if (!_invoiceService.SaveChanges()) return false;
 
-            return true;
+            //return true;
+            return false;
         }
 
         public bool Delete<T>(T entity) where T : InvoiceRemovedModel

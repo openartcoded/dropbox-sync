@@ -200,7 +200,7 @@ namespace DropboxSync.BLL.Services
             return finalOutput;
         }
 
-        public Task<DropboxMovedFile> UnprocessFile(string dropboxFileId, DateTime fileCreationDate, FileTypes fileType)
+        public Task<DropboxMovedFile?> UnprocessFile(string dropboxFileId, DateTime fileCreationDate, FileTypes fileType)
         {
             throw new NotImplementedException();
         }

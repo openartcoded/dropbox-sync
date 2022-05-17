@@ -58,6 +58,8 @@ namespace DropboxSync.BLL.Services
         /// <returns><see cref="SavedFile"/> object if download and save was successfull. <c>null</c> Otherwise</returns>
         public async Task<SavedFile?> DownloadFile(string fileId)
         {
+            if (string.IsNullOrEmpty(fileId)) throw new ArgumentNullException(nameof(fileId));
+
             if (_httpClient.DefaultRequestHeaders.Authorization is null)
             {
                 if (!await GetToken())
@@ -67,6 +69,8 @@ namespace DropboxSync.BLL.Services
                 }
             }
 
+            SavedFile? finalOutput = null;
+
             string fileDownloadUrl = $"{API_BACKEND_URL}/api/resource/download?id={fileId}";
 
             HttpResponseMessage response = await _httpClient.GetAsync(fileDownloadUrl);
@@ -75,20 +79,20 @@ namespace DropboxSync.BLL.Services
             {
                 _logger.LogError("{date} | Something went wrong on api call to route \"{fileDownloadUrl}\"",
                     DateTime.Now, fileDownloadUrl);
-                return null;
+                return finalOutput;
             }
 
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("{date} | The API call was unsuccesfull. Reponse status is \"{responseCode}\"",
                     DateTime.Now, response.StatusCode);
-                return null;
+                return finalOutput;
             }
 
             if (response.Content is null)
             {
                 _logger.LogError("{date} | Response content is null!", DateTime.Now);
-                return null;
+                return finalOutput;
             }
 
 
@@ -97,7 +101,7 @@ namespace DropboxSync.BLL.Services
             if (fileData is null)
             {
                 _logger.LogError("{date} | Byte array from file is null", DateTime.Now);
-                return null;
+                return finalOutput;
             }
 
             string? fileName = response.Content.Headers?.ContentDisposition?.FileName;
@@ -106,7 +110,7 @@ namespace DropboxSync.BLL.Services
             {
                 _logger.LogError("{date} | The file name for file with ID \"{fileId}\" could not be retrieved!",
                     DateTime.Now, fileId);
-                return null;
+                return finalOutput;
             }
 
             fileName = fileName.Replace("\"", "");
@@ -119,17 +123,25 @@ namespace DropboxSync.BLL.Services
             {
                 _logger.LogError("{date} | The content type for file with ID \"{fileId}\" could not be retrieved!",
                     DateTime.Now, fileId);
-                return null;
+                return finalOutput;
             }
 
             string filePath = $"{FILE_DOWNLOAD_DIR}\\{fileId}-{fileName}";
             await File.WriteAllBytesAsync(filePath, fileData);
+            FileInfo fileInfo = new FileInfo(filePath);
+            if (!fileInfo.Exists)
+            {
+                _logger.LogError("{date} | File at path \"{filePath}\" doesn't exist!", DateTime.Now, filePath);
+                return finalOutput;
+            }
 
-            SavedFile savedFile = new SavedFile(filePath, contentType, fileExtension);
+            long fileSize = fileInfo.Length;
+
+            finalOutput = new SavedFile(filePath, contentType, fileName, fileSize, fileExtension);
 
             _logger.LogInformation("{date} | File saved at {filepath}", DateTime.Now, filePath);
 
-            return savedFile;
+            return finalOutput;
         }
 
         private async Task<bool> GetToken()
