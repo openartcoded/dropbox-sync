@@ -104,6 +104,8 @@ namespace DropboxSync.UIL.Managers
             {
                 entityFromRepo.Deleted = true;
             }
+
+            return true;
         }
 
         public bool Restore(InvoiceRestoredModel model)
