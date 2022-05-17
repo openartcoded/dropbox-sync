@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class DossierExpensesAddedModel : DossierModelBase
+    public class DossierExpensesAddedModel : DossierModelBase
     {
         public string[] ExpenseIds { get; set; } = new string[0];
     }
