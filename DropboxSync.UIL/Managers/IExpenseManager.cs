@@ -9,10 +9,10 @@ namespace DropboxSync.UIL.Managers
 {
     public interface IExpenseManager : IEventManager
     {
-        new bool Create<T>(T entity) where T : ExpenseReceivedModel;
+        new bool Create<T>(T model) where T : ExpenseReceivedModel;
         bool UpdateLabel(ExpenseLabelUpdatedModel model);
         bool UpdatePrice(ExpensePriceUpdatedModel model);
-        new bool Delete<T>(T entity) where T : ExpenseRemovedModel;
+        new bool Delete<T>(T model) where T : ExpenseRemovedModel;
         bool RemoveExpenseAttachment(ExpenseAttachmentRemovedModel model);
     }
 }

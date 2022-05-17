@@ -1,4 +1,6 @@
-﻿using DropboxSync.BLL.IServices;
+﻿using AutoMapper;
+using DropboxSync.BLL.Entities;
+using DropboxSync.BLL.IServices;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
@@ -14,19 +16,22 @@ namespace DropboxSync.UIL.Managers
     public class ExpenseManager : IExpenseManager
     {
         private readonly ILogger _logger;
+        private readonly IMapper _mapper;
         private readonly IExpenseService _expenseService;
         private readonly IFileService _fileService;
         private readonly IDropboxService _dropboxService;
 
-        public ExpenseManager(ILogger<ExpenseManager> logger, IExpenseService expenseService, IFileService fileService,
+        public ExpenseManager(ILogger<ExpenseManager> logger, IMapper mapper, IExpenseService expenseService, IFileService fileService,
             IDropboxService dropboxService)
         {
-            _logger = logger
-                ?? throw new ArgumentNullException(nameof(logger));
+            _logger = logger ??
+                throw new ArgumentNullException(nameof(logger));
+            _mapper = mapper ??
+                throw new ArgumentNullException(nameof(mapper));
             _expenseService = expenseService ??
                 throw new ArgumentNullException(nameof(expenseService));
-            _fileService = fileService
-                ?? throw new ArgumentNullException(nameof(fileService));
+            _fileService = fileService ??
+                throw new ArgumentNullException(nameof(fileService));
             _dropboxService = dropboxService ??
                 throw new ArgumentNullException(nameof(dropboxService));
         }
@@ -34,9 +39,31 @@ namespace DropboxSync.UIL.Managers
         // TODO : 1. Create a local backup
         // TODO : 2. Create a dropbox backup
         // TODO : 3. Save information in database
-        public bool Create<T>(T entity) where T : ExpenseReceivedModel
+        public bool Create<T>(T model) where T : ExpenseReceivedModel
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            // TODO : Create mapper profile from ExpenseReceivedModel to ExpenseEntity
+            ExpenseEntity expenseEntity = _mapper.Map<ExpenseEntity>(model);
+
+            if (expenseEntity is null)
+            {
+                _logger.LogError("{date} | The mapping from {modelType} to {entityType} couldn't be made!",
+                    DateTime.Now, typeof(ExpenseReceivedModel), typeof(ExpenseEntity));
+                return false;
+            }
+
+            foreach (var file in model.UploadIds)
+            {
+                string? filePath = Task.Run(async () => await _fileService.DownloadFile(file)).Result;
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    _logger.LogError("{date} | File with ID \"{fileId}\" couldn't be downloaded!", DateTime.Now, file);
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // TODO : 1. Delete file from local backup
