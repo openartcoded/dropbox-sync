@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.BLL.Services
 {
+    public record SavedFile(string relativePath, string contentType, string? fileExtension = null);
+
     public class FileService : IFileService
     {
         /// <summary>
@@ -51,7 +53,12 @@ namespace DropboxSync.BLL.Services
             }
         }
 
-        public async Task<string?> DownloadFile(string fileId)
+        /// <summary>
+        /// Download the file from API and save it locally. Finally returns an <see cref="SavedFile"/> object containing needed data
+        /// </summary>
+        /// <param name="fileId">The ID of the file to download</param>
+        /// <returns><see cref="SavedFile"/> object if download and save was successfull. <c>null</c> Otherwise</returns>
+        public async Task<SavedFile?> DownloadFile(string fileId)
         {
             if (_httpClient.DefaultRequestHeaders.Authorization is null)
             {
@@ -86,6 +93,7 @@ namespace DropboxSync.BLL.Services
                 return null;
             }
 
+
             byte[] fileData = await response.Content.ReadAsByteArrayAsync();
 
             if (fileData is null)
@@ -119,9 +127,11 @@ namespace DropboxSync.BLL.Services
             string filePath = $"{FILE_DOWNLOAD_DIR}\\{fileId}-{fileName}";
             await File.WriteAllBytesAsync(filePath, fileData);
 
+            SavedFile savedFile = new SavedFile(filePath, contentType, fileExtension);
+
             _logger.LogInformation("{date} | File saved at {filepath}", DateTime.Now, filePath);
 
-            return filePath;
+            return savedFile;
         }
 
         private async Task<bool> GetToken()
