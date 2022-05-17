@@ -1,5 +1,6 @@
 ﻿using Dropbox.Api;
 using Dropbox.Api.Check;
+using Dropbox.Api.FileRequests;
 using Dropbox.Api.Files;
 using DropboxSync.BLL.IServices;
 using Microsoft.Extensions.Logging;
@@ -125,6 +126,83 @@ namespace DropboxSync.BLL.Services
             }
 
             return creationResult.Id;
+        }
+
+        public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate,
+            FileTypes fileType, bool isProcess, string? dossierName = null)
+        {
+            if (string.IsNullOrEmpty(dropboxFileId)) throw new ArgumentNullException(nameof(dropboxFileId));
+            if (string.IsNullOrEmpty(dropboxFilePath)) throw new ArgumentNullException(nameof(dropboxFilePath));
+            if (string.IsNullOrEmpty(dossierName) && isProcess) throw new ArgumentNullException(nameof(dossierName));
+
+            DropboxMovedFile? finalOutput = null;
+
+            // TODO : Check if dropboxFilePath is the correct path of the file.
+            SearchV2Result searchResult = await _dropboxClient.Files.SearchV2Async(dropboxFilePath);
+
+            if (searchResult is null)
+            {
+                _logger.LogError("{date} | There is no file with id \"{fileId}\" registered in Dropbox", DateTime.Now, dropboxFilePath);
+                return finalOutput;
+            }
+
+            if (searchResult.Matches.Count != 1)
+            {
+                _logger.LogError("{date} | More than one file was found at the location \"{filePath}\"", DateTime.Now, dropboxFilePath);
+                return finalOutput;
+            }
+
+            string matchPath = searchResult.Matches.First().Metadata.AsMetadata.Value.PathDisplay;
+            if (!matchPath.Equals(dropboxFilePath))
+            {
+                _logger.LogError("{date} | The retrieved match's path from dropbox is different of the provided file path. " +
+                    "Dropbox math file path\n\"{dropboxPath}\"\nGiven path:\n\"{filePath}\"", DateTime.Now, matchPath, dropboxFilePath);
+                return finalOutput;
+            }
+
+            RelocationResult relocationResult;
+            string newPath;
+
+
+            if (isProcess)
+            {
+                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{FileTypes.Dossiers}/{dossierName}/{fileType}/";
+            }
+            else
+            {
+                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{fileType}/";
+            }
+
+            string? verifiedPath = await VerifyFolderExist(newPath, true);
+
+            if (string.IsNullOrEmpty(verifiedPath))
+            {
+                _logger.LogError("{date} | No folder exist at path \"{path}\" and it couldn't be created!", DateTime.Now, newPath);
+                return null;
+            }
+
+            relocationResult = await _dropboxClient.Files.MoveV2Async(dropboxFilePath, verifiedPath,
+                allowSharedFolder: true, allowOwnershipTransfer: true);
+
+            if (relocationResult is null)
+            {
+                _logger.LogError("{date} | The relocation failed, returning a \"null\"", DateTime.Now);
+                return null;
+            }
+
+            finalOutput = new DropboxMovedFile(dropboxFilePath, verifiedPath);
+
+            return finalOutput;
+        }
+
+        public Task<DropboxMovedFile> UnprocessFile(string dropboxFileId, DateTime fileCreationDate, FileTypes fileType)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> DeleteFile(string fileId)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -343,6 +421,78 @@ namespace DropboxSync.BLL.Services
 
             CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/ARTCODED/{folderName}");
             return value.Metadata.PathLower;
+        }
+
+        /// <summary>
+        /// Verify if the folder at full dropbox path <paramref name="folderFullPath"/> exist in Dropbox. If <paramref name="createIfDontExist"/>
+        /// is <c>true</c> then the folder is created.
+        /// </summary>
+        /// <param name="folderFullPath">Dropbox's folder full path</param>
+        /// <param name="createIfDontExist">If <c>true</c>, creates the folder at the researched destination</param>
+        /// <returns>
+        /// <c>null</c> if listing at path <see cref="ROOT_FOLDER"/> failed or if folder isn't found and <paramref name="createIfDontExist"/> is false
+        /// </returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        private async Task<string?> VerifyFolderExist(string folderFullPath, bool createIfDontExist = false)
+        {
+            if (string.IsNullOrEmpty(folderFullPath)) throw new ArgumentNullException(nameof(folderFullPath));
+
+            ListFolderResult listFolderResult = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}");
+            if (listFolderResult is null)
+            {
+                _logger.LogError("{date} | List folder returned a null object for path {rootPath}", DateTime.Now, $"/{ROOT_FOLDER}");
+                return null;
+            }
+
+            bool firstOccurence = true;
+
+            do
+            {
+                if (!firstOccurence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
+
+                foreach (Metadata metadata in listFolderResult.Entries)
+                {
+                    if (metadata.IsFolder && metadata.PathDisplay.Equals(folderFullPath)) return metadata.AsFolder.PathDisplay;
+                }
+
+                firstOccurence = false;
+            }
+            while (listFolderResult.HasMore);
+
+            if (!createIfDontExist) return null;
+
+            return await CreateFolder(folderFullPath);
+        }
+
+        /// <summary>
+        /// Create a folder at the destination path. The destination path must be absolute, meaning it starts with "/" followed by the
+        /// name defined in <see cref="ROOT_FOLDER"/> and the rest defined by the user.
+        /// </summary>
+        /// <param name="folderFullPath">Non nullable or empty full dropbox path where we create the folder</param>
+        /// <returns>
+        /// <c>null</c> If the folder couldn't be created or if it created something else than a folder. The Dropbox display full path
+        /// otherwise.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        private async Task<string?> CreateFolder(string folderFullPath)
+        {
+            if (string.IsNullOrEmpty(folderFullPath)) throw new ArgumentNullException(nameof(folderFullPath));
+
+            CreateFolderResult? folderMetadata = await _dropboxClient.Files.CreateFolderV2Async(folderFullPath);
+            if (folderMetadata is null)
+            {
+                _logger.LogError("{date} | Folder at path \"{path}\" couldn't be created!", DateTime.Now, folderFullPath);
+                return null;
+            }
+
+            if (!folderMetadata.Metadata.IsFolder)
+            {
+                _logger.LogError("{date} | Something was created at the destination \"{path}\" but not a folder.",
+                    DateTime.Now, folderFullPath);
+                return null;
+            }
+
+            return folderMetadata.Metadata.AsFolder.PathDisplay;
         }
 
         // TODO : If access token expired exception happens. Refresh the token
