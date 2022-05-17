@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
+using DropboxSync.BLL.Services;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
@@ -55,13 +56,18 @@ namespace DropboxSync.UIL.Managers
 
             foreach (var file in model.UploadIds)
             {
-                string? filePath = Task.Run(async () => await _fileService.DownloadFile(file)).Result;
-                if (string.IsNullOrEmpty(filePath))
+                SavedFile? savedFile = Task.Run(async () => await _fileService.DownloadFile(file)).Result;
+                if (savedFile is null)
                 {
                     _logger.LogError("{date} | File with ID \"{fileId}\" couldn't be downloaded!", DateTime.Now, file);
                     return false;
                 }
+
+                if (expenseEntity.Uploads == null) expenseEntity.Uploads = new List<UploadEntity>();
+
             }
+
+
 
             return true;
         }

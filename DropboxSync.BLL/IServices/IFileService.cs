@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DropboxSync.BLL.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace DropboxSync.BLL.IServices
 {
     public interface IFileService
     {
-        Task<string?> DownloadFile(string fileId);
+        Task<SavedFile?> DownloadFile(string fileId);
     }
 }
