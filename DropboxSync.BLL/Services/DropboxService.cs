@@ -99,33 +99,38 @@ namespace DropboxSync.BLL.Services
                     $"the error");
         }
 
-        public async Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath,
+        public async Task<DropboxSavedFile?> SaveUnprocessedFile(string fileName, DateTime createdAt, string fileRelativePath,
             FileTypes fileType, string? fileExtension = null)
         {
-            if (string.IsNullOrEmpty(absoluteLocalPath)) throw new ArgumentNullException(nameof(absoluteLocalPath));
+            if (string.IsNullOrEmpty(fileRelativePath)) throw new ArgumentNullException(nameof(fileRelativePath));
+
+            DropboxSavedFile? finalOuput = null;
 
             string requiredFolder = $"{createdAt.Year}/UNPROCESSED/{fileType.ToString().ToUpper()}";
             string? folderDropboxPath = await CheckFolderAndCreate(requiredFolder);
             if (string.IsNullOrEmpty(folderDropboxPath))
             {
                 _logger.LogError("{date} | The folder couldn't be checked nor created!", DateTime.Now);
-                return null;
+                return finalOuput;
             }
 
             string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd")}-{fileName}";
+
             if (!string.IsNullOrEmpty(fileExtension)) fileDropboxName = string.Join('.', fileDropboxName, fileExtension);
 
             FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
-                        new FileStream(absoluteLocalPath, FileMode.Open));
+                        new FileStream(fileRelativePath, FileMode.Open));
 
             if (creationResult is null)
             {
                 _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
                     DateTime.Now, fileName, folderDropboxPath);
-                return null;
+                return finalOuput;
             }
 
-            return creationResult.Id;
+            finalOuput = new DropboxSavedFile(creationResult.Id, creationResult.PathDisplay);
+
+            return finalOuput;
         }
 
         public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate,

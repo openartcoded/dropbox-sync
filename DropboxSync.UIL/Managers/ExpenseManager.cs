@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
+using DropboxSync.BLL;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
-using DropboxSync.BLL.Services;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
@@ -54,20 +54,50 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            foreach (var file in model.UploadIds)
+            foreach (string uploadId in model.UploadIds)
             {
-                SavedFile? savedFile = Task.Run(async () => await _fileService.DownloadFile(file)).Result;
+                SavedFile? savedFile = Task.Run(async () => await _fileService.DownloadFile(uploadId)).Result;
                 if (savedFile is null)
                 {
-                    _logger.LogError("{date} | File with ID \"{fileId}\" couldn't be downloaded!", DateTime.Now, file);
+                    _logger.LogError("{date} | File with ID \"{fileId}\" couldn't be downloaded!", DateTime.Now, uploadId);
                     return false;
                 }
 
-                if (expenseEntity.Uploads == null) expenseEntity.Uploads = new List<UploadEntity>();
+                DropboxSavedFile? dropboxSavedFile = Task.Run(async () => await _dropboxService.SaveUnprocessedFile(savedFile.FileName, DateTime.Now,
+                    savedFile.RelativePath, FileTypes.Expenses, savedFile.FileExtension)).Result;
 
+                if (dropboxSavedFile is null)
+                {
+                    _logger.LogError("{date} | File with ID : \"{fileID}\" couldn't be saved. Please read precedent logs to understand " +
+                        "the why.", DateTime.Now, uploadId);
+                    continue;
+                }
+
+                if (expenseEntity.Uploads is null) expenseEntity.Uploads = new List<UploadEntity>();
+
+                UploadEntity upload = new UploadEntity()
+                {
+                    ContentType = savedFile.ContentType,
+                    FileExtention = savedFile.FileExtension ?? "UNKNOWN",
+                    FileSize = savedFile.FileSize,
+                    LocalRelativePath = savedFile.RelativePath,
+                    OriginalFileName = savedFile.FileName,
+                    DropboxFileId = dropboxSavedFile.DropboxFileId,
+                    DropboxPath = dropboxSavedFile.DropboxFilePath,
+                    Id = Guid.Parse(uploadId)
+                };
+
+                expenseEntity.Uploads.Add(upload);
             }
 
+            if (!_expenseService.SaveChanges())
+            {
+                _logger.LogError("{date} | Expense with ID : \"{expenseId}\" couldn't be saved in the database.", DateTime.Now, model.ExpenseId);
+                return false;
+            }
 
+            _logger.LogInformation("{date} | Expense with ID : \"{expenseId}\" was added to the database with its upload list.", DateTime.Now,
+                model.ExpenseId);
 
             return true;
         }

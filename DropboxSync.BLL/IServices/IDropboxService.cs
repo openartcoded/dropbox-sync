@@ -11,11 +11,11 @@ namespace DropboxSync.BLL.IServices
 
     public interface IDropboxService
     {
-        Task<string?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath, FileTypes fileType,
+        Task<DropboxSavedFile?> SaveUnprocessedFile(string fileName, DateTime createdAt, string absoluteLocalPath, FileTypes fileType,
             string? fileExtension = null);
 
-        Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, string dropboxDossierPath, DateTime fileCreationDate,
-            FileTypes fileType, bool isProcess);
+        Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate, FileTypes fileType,
+            bool isProcess, string? dossierName = null);
         Task<DropboxMovedFile?> UnprocessFile(string dropboxFileId, DateTime fileCreationDate, FileTypes fileType);
         Task<bool> DeleteFile(string fileId);
     }

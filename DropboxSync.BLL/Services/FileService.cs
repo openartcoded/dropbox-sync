@@ -14,8 +14,6 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.BLL.Services
 {
-    public record SavedFile(string RelativePath, string ContentType, string FileName, int FileSize, string? FileExtension = null);
-
     public class FileService : IFileService
     {
         /// <summary>
