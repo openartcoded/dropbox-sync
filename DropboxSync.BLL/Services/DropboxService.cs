@@ -94,7 +94,7 @@ namespace DropboxSync.BLL.Services
             if (!CheckDropboxClient()) throw new Exception($"An error occured during Dropbox Client checkout. Please read the precedent " +
                 $"logs to understand the error");
 
-            if (!Task.Run(async () => await CheckOrCreateRootFolder()).Result)
+            if (!Task.Run(async () => await VerifyRootFolder()).Result)
                 throw new Exception($"An error occured during folder checkout or creation. Please read the precedent logs to understand " +
                     $"the error");
         }
@@ -114,7 +114,7 @@ namespace DropboxSync.BLL.Services
                 return finalOuput;
             }
 
-            string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd")}-{fileName}";
+            string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd HHmm")}-{fileName}";
 
             FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
                         new FileStream(fileRelativePath, FileMode.Open));
@@ -171,11 +171,11 @@ namespace DropboxSync.BLL.Services
 
             if (isProcess)
             {
-                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{FileTypes.Dossiers}/{dossierName}/{fileType}/";
+                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{FileTypes.Dossiers.ToString().ToUpper()}/{dossierName}/{fileType.ToString().ToUpper()}/";
             }
             else
             {
-                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{fileType}/";
+                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{fileType.ToString().ToUpper()}/";
             }
 
             string? verifiedPath = await VerifyFolderExist(newPath, true);
@@ -346,7 +346,7 @@ namespace DropboxSync.BLL.Services
         /// First verify Dropbox if any folder with value of <see cref="ROOT_FOLDER"/> exists. If it doesn't exist, then create the folder.
         /// </summary>
         /// <returns><c>true</c> If the folder exists or if the creation went well. <c>false</c> Otherwise</returns>
-        private async Task<bool> CheckOrCreateRootFolder()
+        private async Task<bool> VerifyRootFolder()
         {
             ListFolderResult listFolderResult = await _dropboxClient.Files.ListFolderAsync("", recursive: true,
                 includeHasExplicitSharedMembers: true, includeMountedFolders: true);
@@ -400,12 +400,12 @@ namespace DropboxSync.BLL.Services
             if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
 
             //SearchV2Result fileList = await _dropboxClient.Files.SearchV2Async($"/ARTCODED");
-            ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync("/ARTCODED", recursive: true,
+            ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}", recursive: true,
                 includeHasExplicitSharedMembers: true, includeMountedFolders: true);
 
             if (fileList is null)
             {
-                _logger.LogError("{date} | An error occurred when trying to list folder \"ARTCODED\"", DateTime.Now);
+                _logger.LogError("{date} | An error occurred when trying to list folder \"{rootF}\"", DateTime.Now, ROOT_FOLDER);
                 return null;
             }
 
@@ -417,14 +417,14 @@ namespace DropboxSync.BLL.Services
 
                 foreach (Metadata file in fileList.Entries)
                 {
-                    if (file.IsFolder && file.PathDisplay.Equals($"/ARTCODED/{folderName}")) return file.AsFolder.PathLower;
+                    if (file.IsFolder && file.PathDisplay.Equals($"/{ROOT_FOLDER}/{folderName}")) return file.AsFolder.PathLower;
                 }
 
                 firstOccurence = false;
             }
             while (fileList.HasMore);
 
-            CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/ARTCODED/{folderName}");
+            CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/{ROOT_FOLDER}/{folderName}");
             return value.Metadata.PathLower;
         }
 
