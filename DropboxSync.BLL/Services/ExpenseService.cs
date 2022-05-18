@@ -29,7 +29,7 @@ namespace DropboxSync.BLL.Services
         {
             if (entity is null) throw new ArgumentNullException(nameof(entity));
 
-            _context.Expenses.Add(entity);
+            _context.Expenses.Remove(entity);
         }
 
         public IEnumerable<ExpenseEntity> GetAll()

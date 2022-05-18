@@ -147,6 +147,12 @@ namespace DropboxSync.UIL.Managers
                 _uploadService.Delete(uploadFromRepo);
             }
 
+            if (!_uploadService.SaveChanges())
+            {
+                _logger.LogError("{date} | Uploads couldn't be deleted from the database", DateTime.Now);
+                return false;
+            }
+
             ExpenseEntity? expenseFromRepo = _expenseService.GetById(Guid.Parse(entity.ExpenseId));
             if (expenseFromRepo is null)
             {
