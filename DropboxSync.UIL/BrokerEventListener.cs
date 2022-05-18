@@ -232,11 +232,63 @@ namespace DropboxSync.UIL
                 case BrokerEvent.InvoiceAddedToDossier:
                 // Redirect all dossier events with _dossierManager.Redirect()
                 case BrokerEvent.DossierCreated:
+
+                    DossierCreateModel? dossierCreate = JsonConvert.DeserializeObject<DossierCreateModel>(jsonObj);
+                    if (dossierCreate is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierCreateModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Create(dossierCreate);
+
                 case BrokerEvent.DossierClosed:
+
+                    DossierCloseModel? dossierClose = JsonConvert.DeserializeObject<DossierCloseModel>(jsonObj);
+                    if (dossierClose is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierCloseModel));
+                        return false;
+                    }
+
+                    return _dossierManager.CloseDossier(dossierClose);
+
                 case BrokerEvent.DossierDeleted:
+
+                    DossierDeleteModel? dossierDelete = JsonConvert.DeserializeObject<DossierDeleteModel>(jsonObj);
+                    if (dossierDelete is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierDeleteModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Delete(dossierDelete);
+
                 case BrokerEvent.DossierUpdated:
+
+                    DossierUpdateModel? dossierUpdate = JsonConvert.DeserializeObject<DossierUpdateModel>(jsonObj);
+                    if (dossierUpdate is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierUpdateModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Update(dossierUpdate);
+
                 case BrokerEvent.DossierRecallForModification:
-                // Send a message to the log and return false
+
+                    DossierRecallForModificationModel? dossierRecallForModification =
+                        JsonConvert.DeserializeObject<DossierRecallForModificationModel>(jsonObj);
+
+                    if (dossierRecallForModification is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DossierRecallForModificationModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Recall(dossierRecallForModification);
+
                 default:
                     _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);
                     return false;
