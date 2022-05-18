@@ -193,21 +193,41 @@ namespace DropboxSync.UIL
                     }
                     return false;
 
-                // Redirect all Invoice events with _invoiceManager.Redirect()
                 case BrokerEvent.InvoiceGenerated:
 
-                    InvoiceGeneratedModel? invoice = JsonConvert.DeserializeObject<InvoiceGeneratedModel>(jsonObj);
-                    if (invoice is null)
+                    InvoiceGeneratedModel? invoiceGenerated = JsonConvert.DeserializeObject<InvoiceGeneratedModel>(jsonObj);
+                    if (invoiceGenerated is null)
                     {
                         _logger.LogError("{date} | The deserialized object of type {type} is null!",
                             DateTime.Now, typeof(InvoiceGeneratedModel));
                         return false;
                     }
 
-                    return _invoiceManager.Create(invoice);
+                    return _invoiceManager.Create(invoiceGenerated);
 
                 case BrokerEvent.InvoiceRemoved:
+
+                    InvoiceRemovedModel? invoiceRemoved = JsonConvert.DeserializeObject<InvoiceRemovedModel>(jsonObj);
+                    if (invoiceRemoved is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(InvoiceRemovedModel));
+                        return false;
+                    }
+
+                    return _invoiceManager.Delete(invoiceRemoved);
+
                 case BrokerEvent.InvoiceRestored:
+
+                    InvoiceRestoredModel? invoiceRestored = JsonConvert.DeserializeObject<InvoiceRestoredModel>(jsonObj);
+
+                    if (invoiceRestored is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(InvoiceRestoredModel));
+                        return false;
+                    }
+
+                    return _invoiceManager.Restore(invoiceRestored);
+
                 case BrokerEvent.InvoiceRemovedFromDossier:
                 case BrokerEvent.InvoiceAddedToDossier:
                 // Redirect all dossier events with _dossierManager.Redirect()
