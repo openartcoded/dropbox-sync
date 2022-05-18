@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
+using DropboxSync.Helpers;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
 using System;
@@ -18,9 +19,10 @@ namespace DropboxSync.UIL.Managers
         private readonly IDossierService _dossierService;
         private readonly IFileService _fileService;
         private readonly IDropboxService _dropboxService;
+        private readonly IUploadService _uploadService;
 
         public DossierManager(ILogger<DossierManager> logger, IMapper mapper, IDossierService dossierService, IFileService fileService,
-            IDropboxService dropboxService)
+            IDropboxService dropboxService, IUploadService uploadService)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -32,6 +34,8 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(fileService));
             _dropboxService = dropboxService ??
                 throw new ArgumentNullException(nameof(dropboxService));
+            _uploadService = uploadService ??
+                throw new ArgumentNullException(nameof(uploadService));
         }
 
         public bool AddExpense(DossierExpensesAddedModel model)
@@ -60,6 +64,45 @@ namespace DropboxSync.UIL.Managers
             {
                 _logger.LogError("{date} | An error occured while trying to localy save file with ID \"{fileId}\"",
                     DateTime.Now, model.UploadId);
+                return false;
+            }
+
+            DropboxSavedFile? dropboxSavedFile = _dropboxService.SaveDossierAsync(dossierFromRepo.Name, localSaveResult.FileName,
+                localSaveResult.RelativePath, dossierFromRepo.CreatedAt).Result;
+
+            if (dropboxSavedFile is null)
+            {
+                _logger.LogError("{date} | Could not save dossier with ID \"{id}\" in Dropbox", DateTime.Now, dossierFromRepo.Id);
+                return false;
+            }
+
+            UploadEntity upload = new UploadEntity()
+            {
+                ContentType = localSaveResult.ContentType,
+                DropboxFileId = dropboxSavedFile.DropboxFileId,
+                FileExtention = localSaveResult.FileExtension ?? "UNKNOWN",
+                FileSize = localSaveResult.FileSize,
+                OriginalFileName = localSaveResult.FileName,
+                UploadId = model.UploadId,
+                Id = Guid.NewGuid()
+            };
+
+            _uploadService.Create(upload);
+
+            if (!_uploadService.SaveChanges())
+            {
+                _logger.LogError("{date} | Could not save file with ID \"{uploadId}\" to the database.", DateTime.Now, model.UploadId);
+                return false;
+            }
+
+            dossierFromRepo.UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp);
+            dossierFromRepo.IsClosed = true;
+
+            _dossierService.Update(dossierFromRepo);
+
+            if (!_dossierService.SaveChanges())
+            {
+                _logger.LogError("{date} | Could not save dossier with ID \"{dossierId}\" in the database.", DateTime.Now, dossierFromRepo.Id);
                 return false;
             }
 

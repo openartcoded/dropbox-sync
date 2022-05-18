@@ -229,6 +229,41 @@ namespace DropboxSync.BLL.Services
             return true;
         }
 
+        public async Task<DropboxSavedFile?> SaveDossierAsync(string dossierName, string fileName, string dossierRelativePath, DateTime createdAt)
+        {
+            if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
+            if (string.IsNullOrEmpty(dossierRelativePath)) throw new ArgumentNullException(nameof(dossierRelativePath));
+
+            DropboxSavedFile? dropboxSaved = null;
+
+            string dropboxDestinationPath = $"/{createdAt.Year}/{FileTypes.Dossiers.ToString().ToUpper()}/{dossierName}";
+
+            string? dropboxFolderPath = await CheckFolderAndCreate(dropboxDestinationPath);
+            if (string.IsNullOrEmpty(dropboxFolderPath))
+            {
+                _logger.LogError("{date} | There is no destination folder for this dossier", DateTime.Now);
+                return dropboxSaved;
+            }
+
+            string dropboxFileName = $"{createdAt.ToString("yyyy.MM.dd HHmm")}-{dossierName}";
+
+            FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{dropboxFolderPath}/{dropboxFileName}"),
+                        new FileStream(dossierRelativePath, FileMode.Open));
+
+            if (creationResult is null)
+            {
+                _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
+                    DateTime.Now, fileName, dropboxFolderPath);
+                return dropboxSaved;
+            }
+
+            string dropboxId = creationResult.Id.Substring(creationResult.Id.IndexOf(':') + 1);
+
+            dropboxSaved = new DropboxSavedFile(dropboxId, creationResult.PathDisplay);
+
+            return dropboxSaved;
+        }
+
         public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate,
             FileTypes fileType, bool isProcess, string? dossierName = null)
         {
