@@ -144,6 +144,15 @@ namespace DropboxSync.BLL.Services
             return finalOutput;
         }
 
+        public bool Delete(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+
+            File.Delete($"{FILE_DOWNLOAD_DIR}\\{fileName}");
+
+            return !File.Exists($"{FILE_DOWNLOAD_DIR}\\{fileName}");
+        }
+
         private async Task<bool> GetToken()
         {
             ApiAuthenticationDto apiAuthentication = new ApiAuthenticationDto()

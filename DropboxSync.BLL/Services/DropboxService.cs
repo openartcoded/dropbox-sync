@@ -205,9 +205,27 @@ namespace DropboxSync.BLL.Services
             throw new NotImplementedException();
         }
 
-        public Task<bool> DeleteFile(string fileId)
+        public async Task<bool> DeleteFile(string dropboxId)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(dropboxId)) throw new ArgumentNullException(nameof(dropboxId));
+
+            Metadata metadata = await _dropboxClient.Files.GetMetadataAsync($"id:{dropboxId}");
+            if (metadata is null)
+            {
+                _logger.LogError("{date} | No file with ID \"{fileId}\" could have been found.", DateTime.Now, dropboxId);
+                return false;
+            }
+
+            DeleteResult deleteResult = await _dropboxClient.Files.DeleteV2Async(metadata.PathDisplay);
+            if (deleteResult is null)
+            {
+                _logger.LogError("{date} | The removal of the file failed. {obj} is null", DateTime.Now, nameof(deleteResult));
+                return false;
+            }
+
+            _logger.LogInformation("{date} | File with ID \"{id}\" have been successfully removed!", DateTime.Now, dropboxId);
+
+            return true;
         }
 
         /// <summary>

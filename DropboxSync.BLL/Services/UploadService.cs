@@ -44,6 +44,13 @@ namespace DropboxSync.BLL.Services
             return _context.Uploads.Find(id);
         }
 
+        public UploadEntity? GetByUploadId(string uploadId)
+        {
+            if (string.IsNullOrEmpty(uploadId)) throw new ArgumentNullException(nameof(uploadId));
+
+            return _context.Uploads.SingleOrDefault(u => u.UploadId.Equals(uploadId));
+        }
+
         public bool SaveChanges()
         {
             return _context.SaveChanges() > 0;

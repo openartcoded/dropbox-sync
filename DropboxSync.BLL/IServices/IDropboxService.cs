@@ -17,6 +17,6 @@ namespace DropboxSync.BLL.IServices
         Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate, FileTypes fileType,
             bool isProcess, string? dossierName = null);
         Task<DropboxMovedFile?> UnprocessFile(string dropboxFileId, DateTime fileCreationDate, FileTypes fileType);
-        Task<bool> DeleteFile(string fileId);
+        Task<bool> DeleteFile(string dropboxId);
     }
 }

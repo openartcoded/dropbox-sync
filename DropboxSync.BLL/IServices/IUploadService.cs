@@ -9,5 +9,6 @@ namespace DropboxSync.BLL.IServices
 {
     public interface IUploadService : IServiceBase<UploadEntity, Guid>
     {
+        public UploadEntity? GetByUploadId(string uploadId);
     }
 }

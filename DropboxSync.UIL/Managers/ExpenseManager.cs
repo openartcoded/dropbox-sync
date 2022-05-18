@@ -21,9 +21,10 @@ namespace DropboxSync.UIL.Managers
         private readonly IExpenseService _expenseService;
         private readonly IFileService _fileService;
         private readonly IDropboxService _dropboxService;
+        private readonly IUploadService _uploadService;
 
         public ExpenseManager(ILogger<ExpenseManager> logger, IMapper mapper, IExpenseService expenseService, IFileService fileService,
-            IDropboxService dropboxService)
+            IDropboxService dropboxService, IUploadService uploadService)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -35,6 +36,8 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(fileService));
             _dropboxService = dropboxService ??
                 throw new ArgumentNullException(nameof(dropboxService));
+            _uploadService = uploadService ??
+                throw new ArgumentNullException(nameof(uploadService));
         }
 
         // TODO : 1. Create a local backup
@@ -108,7 +111,52 @@ namespace DropboxSync.UIL.Managers
         // TODO : 3. Delete rows from database
         public bool Delete<T>(T entity) where T : ExpenseRemovedModel
         {
-            throw new NotImplementedException();
+            if (entity is null) throw new ArgumentNullException(nameof(entity));
+
+            foreach (string uploadId in entity.UploadIds)
+            {
+                if (string.IsNullOrEmpty(uploadId))
+                {
+                    _logger.LogWarning("{date} | An ID provided in the Expense event is null or empty.", DateTime.Now);
+                    continue;
+                }
+
+                UploadEntity? uploadFromRepo = _uploadService.GetByUploadId(uploadId);
+
+                if (uploadFromRepo is null)
+                {
+                    _logger.LogError("{date} | No upload with ID : \"{id}\" is registered in the database.", DateTime.Now, uploadId);
+                    continue;
+                }
+
+                bool dropboxResult = Task.Run(async () => await _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId)).Result;
+                if (!dropboxResult)
+                {
+                    _logger.LogError("{date} | The file with ID \"{id}\"couldn't be deleted from Dropbox.", DateTime.Now, uploadId);
+                    continue;
+                }
+
+                string localFileName = $"{uploadFromRepo.Id}-{uploadFromRepo.OriginalFileName}";
+                bool localResult = _fileService.Delete(localFileName);
+                if (!localResult)
+                {
+                    _logger.LogError("{date} | File with ID \"{id}\" couldn't be deleted locally", DateTime.Now, uploadId);
+                    continue;
+                }
+
+                _uploadService.Delete(uploadFromRepo);
+            }
+
+            ExpenseEntity? expenseFromRepo = _expenseService.GetById(Guid.Parse(entity.ExpenseId));
+            if (expenseFromRepo is null)
+            {
+                _logger.LogError("{date} | Could not find any expense in the database with ID \"{id}\"", DateTime.Now, entity.ExpenseId);
+                return false;
+            }
+
+            _expenseService.Delete(expenseFromRepo);
+
+            return _expenseService.SaveChanges();
         }
 
         // TODO : 1. Delete file from local backup

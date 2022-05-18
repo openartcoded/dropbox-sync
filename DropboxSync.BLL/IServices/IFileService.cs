@@ -11,5 +11,6 @@ namespace DropboxSync.BLL.IServices
     public interface IFileService
     {
         Task<SavedFile?> DownloadFile(string fileId);
+        bool Delete(string fileName);
     }
 }
