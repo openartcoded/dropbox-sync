@@ -12,8 +12,6 @@ namespace DropboxSync.BLL.Entities
         public string UploadId { get; set; } = string.Empty;
         public string OriginalFileName { get; set; } = string.Empty;
         public string DropboxFileId { get; set; } = string.Empty;
-        public string DropboxPath { get; set; } = string.Empty;
-        public string LocalRelativePath { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
         public string FileExtention { get; set; } = string.Empty;
         public long FileSize { get; set; }

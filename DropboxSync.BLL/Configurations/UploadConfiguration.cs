@@ -21,12 +21,6 @@ namespace DropboxSync.BLL.Configurations
             builder.Property(d => d.DropboxFileId)
                 .IsRequired();
 
-            builder.Property(d => d.DropboxPath)
-                .IsRequired();
-
-            builder.Property(d => d.LocalRelativePath)
-                .IsRequired();
-
             builder.Property(d => d.ContentType)
                 .IsRequired();
 

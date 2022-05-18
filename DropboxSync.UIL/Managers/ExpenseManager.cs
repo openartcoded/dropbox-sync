@@ -80,10 +80,8 @@ namespace DropboxSync.UIL.Managers
                     ContentType = savedFile.ContentType,
                     FileExtention = savedFile.FileExtension ?? "UNKNOWN",
                     FileSize = savedFile.FileSize,
-                    LocalRelativePath = savedFile.RelativePath,
                     OriginalFileName = savedFile.FileName,
                     DropboxFileId = dropboxSavedFile.DropboxFileId,
-                    DropboxPath = dropboxSavedFile.DropboxFilePath,
                     UploadId = uploadId,
                     Id = Guid.NewGuid(),
                 };
