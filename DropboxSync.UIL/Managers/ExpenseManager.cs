@@ -164,7 +164,33 @@ namespace DropboxSync.UIL.Managers
         // TODO : 3. Delete upload row from database
         public bool RemoveExpenseAttachment(ExpenseAttachmentRemovedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            UploadEntity? uploadFromRepo = _uploadService.GetByUploadId(model.UploadId);
+            if (uploadFromRepo is null)
+            {
+                _logger.LogError("{date} | Could not find any upload in the database with ID \"{id}\"", DateTime.Now, model.UploadId);
+                return false;
+            }
+
+            bool dropboxResult = Task.Run(async () => await _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId)).Result;
+            if (!dropboxResult)
+            {
+                _logger.LogError("{date} | The file with ID \"{id}\"couldn't be deleted from Dropbox.", DateTime.Now, model.UploadId);
+                return false;
+            }
+
+            string localFileName = $"{uploadFromRepo.Id}-{uploadFromRepo.OriginalFileName}";
+            bool localResult = _fileService.Delete(localFileName);
+            if (!localResult)
+            {
+                _logger.LogError("{date} | File with ID \"{id}\" couldn't be deleted locally", DateTime.Now, model.UploadId);
+                return false;
+            }
+
+            _uploadService.Delete(uploadFromRepo);
+
+            return _uploadService.SaveChanges();
         }
 
         public bool Update<T>(T model) where T : EventModel
@@ -177,7 +203,23 @@ namespace DropboxSync.UIL.Managers
         // TODO : 3. Update information in the database
         public bool UpdateLabel(ExpenseLabelUpdatedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            ExpenseEntity? expenseFromRepo = _expenseService.GetById(Guid.Parse(model.ExpenseId));
+            if (expenseFromRepo is null)
+            {
+                _logger.LogError("{date} | No expense with ID \"{id}\" was found in the database!", DateTime.Now, model.ExpenseId);
+                return false;
+            }
+
+            expenseFromRepo.Label = model.Label;
+            expenseFromRepo.Price = model.PriceHVat;
+            expenseFromRepo.Vat = model.Vat;
+            expenseFromRepo.UpdatedAt = new DateTime(model.Timestamp);
+
+            _expenseService.Update(expenseFromRepo);
+
+            return _expenseService.SaveChanges();
         }
 
         // TODO : 1. Save new file over old one in local backup
@@ -185,7 +227,22 @@ namespace DropboxSync.UIL.Managers
         // TODO : 3. Update information in the database
         public bool UpdatePrice(ExpensePriceUpdatedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            ExpenseEntity? expenseFromRepo = _expenseService.GetById(Guid.Parse(model.ExpenseId));
+            if (expenseFromRepo is null)
+            {
+                _logger.LogError("{date} | No expense with ID \"{id}\" was found in the database!", DateTime.Now, model.ExpenseId);
+                return false;
+            }
+
+            expenseFromRepo.Price = model.PriceHvat;
+            expenseFromRepo.Vat = model.Vat;
+            expenseFromRepo.UpdatedAt = new DateTime(model.Timestamp);
+
+            _expenseService.Update(expenseFromRepo);
+
+            return _expenseService.SaveChanges();
         }
 
         bool IEventManager.Create<T>(T model)
