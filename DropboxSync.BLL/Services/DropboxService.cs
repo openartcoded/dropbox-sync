@@ -137,7 +137,7 @@ namespace DropboxSync.BLL.Services
 
                     while (!dropboxConfigInitialization.IsCompleted)
                     {
-                        
+
                     }
 
                     if (dropboxConfigInitialization.IsCompletedSuccessfully)
@@ -164,7 +164,7 @@ namespace DropboxSync.BLL.Services
 
             if (!Task.Run(async () => await VerifyRootFolder()).Result)
                 throw new Exception($"An error occured during folder checkout or creation. Please read the precedent logs to understand " +
-                    $"the error");        
+                    $"the error");
         }
 
         public async Task<DropboxSavedFile?> SaveUnprocessedFile(string fileName, DateTime createdAt, string fileRelativePath,
@@ -199,6 +199,34 @@ namespace DropboxSync.BLL.Services
             finalOuput = new DropboxSavedFile(dropboxId, creationResult.PathDisplay);
 
             return finalOuput;
+        }
+
+        // TODO : Delete folder if already exist
+        public async Task<bool> CreateDossierAsync(string dossierName, DateTime createdAt, FileTypes fileType)
+        {
+            if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
+            if (fileType != FileTypes.Dossiers) throw new ArgumentOutOfRangeException(nameof(FileTypes));
+
+            string completeFolder = $"/{ROOT_FOLDER}/{createdAt.Year}/{fileType.ToString().ToUpper()}/{dossierName}";
+
+            CreateFolderResult? createFolderResult = await _dropboxClient.Files.CreateFolderV2Async(completeFolder);
+            if (createFolderResult is null)
+            {
+                _logger.LogError("{date} | The folder creation in Dropbox failed!", DateTime.Now);
+                return false;
+            }
+
+            if (!createFolderResult.Metadata.IsFolder)
+            {
+                _logger.LogError("{date} | Something was created but not a folder at path {dropboxPath}",
+                    DateTime.Now, createFolderResult.Metadata.PathDisplay);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Successfully created folder for dossier \"{dossierName}\" at path {dropboxFolderPath}",
+                DateTime.Now, dossierName, createFolderResult.Metadata.PathDisplay);
+
+            return true;
         }
 
         public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate,
