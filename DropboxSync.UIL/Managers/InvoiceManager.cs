@@ -2,6 +2,7 @@
 using DropboxSync.BLL;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
+using DropboxSync.Helpers;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
 using System;
@@ -38,19 +39,19 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(dropboxService));
         }
 
-        public bool Create<T>(T entity) where T : InvoiceGeneratedModel
+        public bool Create<T>(T model) where T : InvoiceGeneratedModel
         {
-            if (entity is null) throw new ArgumentNullException(nameof(entity));
+            if (model is null) throw new ArgumentNullException(nameof(model));
 
-            InvoiceEntity? entityToCreate = _mapper.Map<InvoiceEntity>(entity);
+            InvoiceEntity? entityToCreate = _mapper.Map<InvoiceEntity>(model);
             if (entityToCreate is null)
             {
                 _logger.LogError("{date} | Couldn't map {entityName} to {entityCreate}",
-                    DateTime.Now, nameof(entity), nameof(entityToCreate));
+                    DateTime.Now, nameof(model), nameof(entityToCreate));
                 return false;
             }
 
-            SavedFile? localSaveResult = Task.Run(async () => await _fileService.DownloadFile(entity.UploadId)).Result;
+            SavedFile? localSaveResult = Task.Run(async () => await _fileService.DownloadFile(model.UploadId)).Result;
             if (localSaveResult is null)
             {
                 _logger.LogError("{date} | Couldn't save file locally", DateTime.Now);
@@ -58,18 +59,18 @@ namespace DropboxSync.UIL.Managers
             }
 
             DropboxSavedFile? dropboxSaveResult = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFile(localSaveResult.FileName, new DateTime(entity.Timestamp),
+                await _dropboxService.SaveUnprocessedFile(localSaveResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
                     localSaveResult.RelativePath, FileTypes.Invoices, localSaveResult.FileExtension)).Result;
 
             if (dropboxSaveResult is null)
             {
-                _logger.LogError("{date} | Couldn't save file with ID \"{id}\" in Dropbox", DateTime.Now, entity.UploadId);
+                _logger.LogError("{date} | Couldn't save file with ID \"{id}\" in Dropbox", DateTime.Now, model.UploadId);
                 return false;
             }
 
             UploadEntity upload = new UploadEntity()
             {
-                UploadId = entity.UploadId,
+                UploadId = model.UploadId,
                 ContentType = localSaveResult.ContentType,
                 DropboxFileId = dropboxSaveResult.DropboxFileId,
                 FileExtention = localSaveResult.FileExtension ?? "UKNOWN",
@@ -184,7 +185,7 @@ namespace DropboxSync.UIL.Managers
             }
 
             DropboxSavedFile? dropSaveResult = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFile(saveLocalResult.FileName, new DateTime(model.Timestamp),
+                await _dropboxService.SaveUnprocessedFile(saveLocalResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
                     saveLocalResult.RelativePath, FileTypes.Invoices, saveLocalResult.FileExtension)).Result;
 
             if (dropSaveResult is null)

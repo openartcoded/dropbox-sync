@@ -2,6 +2,7 @@
 using DropboxSync.BLL;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
+using DropboxSync.Helpers;
 using DropboxSync.UIL.Enums;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
@@ -66,8 +67,8 @@ namespace DropboxSync.UIL.Managers
                     return false;
                 }
 
-                DropboxSavedFile? dropboxSavedFile = Task.Run(async () => await _dropboxService.SaveUnprocessedFile(savedFile.FileName, DateTime.Now,
-                    savedFile.RelativePath, FileTypes.Expenses, savedFile.FileExtension)).Result;
+                DropboxSavedFile? dropboxSavedFile = Task.Run(async () => await _dropboxService.SaveUnprocessedFile(savedFile.FileName,
+                   DateTimeHelper.FromUnixTimestamp(model.Timestamp), savedFile.RelativePath, FileTypes.Expenses, savedFile.FileExtension)).Result;
 
                 if (dropboxSavedFile is null)
                 {

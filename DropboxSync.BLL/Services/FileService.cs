@@ -60,16 +60,13 @@ namespace DropboxSync.BLL.Services
         {
             if (string.IsNullOrEmpty(fileId)) throw new ArgumentNullException(nameof(fileId));
 
-            if (_httpClient.DefaultRequestHeaders.Authorization is null)
-            {
-                if (!await GetToken())
-                {
-                    _logger.LogError("{date} | The authentification token could not be retrieved !", DateTime.Now);
-                    return null;
-                }
-            }
-
             SavedFile? finalOutput = null;
+
+            if (!await GetToken())
+            {
+                _logger.LogError("{date} | Could not retrieve Access Token to the API.", DateTime.Now);
+                return finalOutput;
+            }
 
             string fileDownloadUrl = $"{API_BACKEND_URL}/api/resource/download?id={fileId}";
 
@@ -86,6 +83,7 @@ namespace DropboxSync.BLL.Services
             {
                 _logger.LogInformation("{date} | The API call was unsuccesfull. Reponse status is \"{responseCode}\"",
                     DateTime.Now, response.StatusCode);
+
                 return finalOutput;
             }
 
