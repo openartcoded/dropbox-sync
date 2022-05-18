@@ -2,6 +2,7 @@
 using Dropbox.Api.Check;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Files;
+using DropboxSync.BLL.Internals;
 using DropboxSync.BLL.IServices;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -12,13 +13,7 @@ using System.Text;
 
 namespace DropboxSync.BLL.Services
 {
-    // TODO : Test the dropbox StartAsync
     // TODO : Delete all the useless methods
-    // TODO : Add CRUD operations
-
-    // TODO : 1. When Expense is received. Save it to a Unprocessed folder in Dropbox with the next format => [DATE]-[FILENAME].[EXTENSION]
-    // TODO : 2. When an Expense is deleted. Delete all its associated files from Dropbox
-    // TODO : 1. Create a file in a specific folder => [Year]/[UNPROCESSED]/[INVOICE/EXPENSE]/[FILES] OR [YEAR]/[DOSSIER]/[INVOICES/EXPENSES]/[FILES]
 
     // File structure in the Dropbox :
     // Dossier closed : [YEAR]/[DATE-DOSSIER_NAME]/[DOSSIER_ZIP]
@@ -29,14 +24,25 @@ namespace DropboxSync.BLL.Services
         string uid, string account_id);
 
     internal record RefreshAccessTokenResponse(string access_token, string token_type, int expires_in);
-
     public class DropboxService : IDropboxService
     {
+        /// <summary>
+        /// API key received in the Dropbox Application Console page
+        /// </summary>
         private readonly string API_KEY = Environment.GetEnvironmentVariable("DROPBOX_API_KEY") ??
             "";
 
+        /// <summary>
+        /// API Secret key received in the Dropbox Application Console page
+        /// </summary>
         private readonly string API_SECRET = Environment.GetEnvironmentVariable("DROPBOX_API_SECRET") ??
             "";
+
+        /// <summary>
+        /// The configuration Filename. If the Environment variable is null then "dropbox-sync-configuration.json" is chosen
+        /// </summary>
+        private readonly string CONFIG_FILE_NAME = Environment.GetEnvironmentVariable("DROPBOX_CONFIG_FILE_NAME") ??
+            "dropbox-sync-configuration.json";
 
         /// <summary>
         /// Retrieves the declared root folder in Dropbox. If the environnement variable is null then the next folder is used / created:
@@ -47,10 +53,11 @@ namespace DropboxSync.BLL.Services
 
         private readonly ILogger _logger;
         private readonly DropboxClient _dropboxClient;
+        private DropboxConfiguration _dropboxConfig;
 
-        public string AccessToken { get; private set; } = string.Empty;
-        public string RefreshToken { get; private set; } = string.Empty;
-        public string TokenType { get; set; } = string.Empty;
+        //public string AccessToken { get; private set; } = string.Empty;
+        //public string RefreshToken { get; private set; } = string.Empty;
+        //public string TokenType { get; set; } = string.Empty;
 
         /// <summary>
         /// Create an instance of <see cref="DropboxService"/>.
@@ -63,40 +70,101 @@ namespace DropboxSync.BLL.Services
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
 
-            string? refreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN");
+            // Vérifier si le fichier de configuration exist
+            // S'il n'existe pas, vérifier si le CODE est en variable d'environnement
+            // Tenter de récupérer le Refresh token et les autres informations
+            // Si ça ne marche pas, quitter l'application
 
-            if (string.IsNullOrEmpty(refreshToken))
+            string myDocPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.None);
+            if (string.IsNullOrEmpty(myDocPath))
             {
-                _logger.LogInformation("{date} | Refresh token couldn't be retrieved from environnement variable.", DateTime.Now);
-
-                Console.WriteLine("Before continuing please follow copy and paste the next url in your web browser. After you accepted everything, " +
-                "please enter the code you received");
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("IMPORTANT: DO NOT CHANGE ANYTHING IN THE URL! COPY AND PASTE ONLY THE CODE YOU RECEIVED!");
-                Console.ForegroundColor = ConsoleColor.Gray;
-                Console.WriteLine($"https://www.dropbox.com/oauth2/authorize?client_id={API_KEY}&response_type=code&token_access_type=offline");
-                string? enteredCode = Console.ReadLine();
-
-                while (string.IsNullOrEmpty(enteredCode))
-                {
-                    Console.WriteLine("Please enter the code!");
-                    enteredCode = Console.ReadLine();
-                }
-
-                Task.Run(async () => await GetAccessToken(enteredCode)).Wait(10000);
-
-                if (string.IsNullOrEmpty(AccessToken)) throw new Exception($"Operation failed. Please read precedent logs to understand " +
-                    $"the error");
+                _logger.LogError("{date} | Could not retrieve path of \"My Documents\" for Windows and \"\\\" for Linux", DateTime.Now);
+                Environment.Exit(1);
             }
 
-            _dropboxClient = new DropboxClient(AccessToken);
+            string configFilePath = Path.Combine(myDocPath, CONFIG_FILE_NAME);
+
+            // Verify if file exist. If it exist, deserialized it and verify if every property contains a value. If one of them is empty,
+            // application stops.
+            if (File.Exists(configFilePath))
+            {
+                _dropboxConfig = JsonConvert.DeserializeObject<DropboxConfiguration>(File.ReadAllText(configFilePath));
+
+                if (_dropboxConfig is null)
+                {
+                    throw new Exception($"The dropbox deserialized Dropbox configuration returned null");
+                }
+
+                using (Task? dropboxGettingAccessToken = Task.Run(async () => await RefreshAccessToken()))
+                {
+                    _logger.LogInformation("{date} | Refreshing access token", DateTime.Now);
+
+                    while (!dropboxGettingAccessToken.IsCompleted)
+                    {
+
+                    }
+
+                    if (dropboxGettingAccessToken.IsCompletedSuccessfully)
+                    {
+                        _logger.LogInformation("{date} | Access token retrieved successfully!", DateTime.Now);
+                    }
+                    else
+                    {
+                        throw new Exception($"An error occured while trying to retrieve de access token from Dropbox API");
+                    }
+                }
+
+                if (!_dropboxConfig.IsValid)
+                {
+                    throw new Exception($"The dropbox deserialized dropbox configuration has invalid fields!\n{_dropboxConfig}");
+                }
+
+                _logger.LogInformation("{date} | The retrieved refresh token is \"{refreshToken}\"", DateTime.Now, _dropboxConfig.ToString());
+            }
+            // Verify if the CODE given in Env variable returns the token
+            else
+            {
+                string? codeFromEnvironment = Environment.GetEnvironmentVariable("DROPBOX_CODE");
+                if (string.IsNullOrEmpty(codeFromEnvironment))
+                {
+                    throw new Exception($"Could not retrieve Dropbox OAuth2 code from Environment. Please read the documentation " +
+                        $"and try again!");
+                }
+
+                using (Task<DropboxConfiguration> dropboxConfigInitialization = Task.Run(async () => await InitDropboxConfiguration()))
+                {
+                    _logger.LogInformation("{date} | Retrieving configuration.", DateTime.Now);
+
+                    while (!dropboxConfigInitialization.IsCompleted)
+                    {
+                        
+                    }
+
+                    if (dropboxConfigInitialization.IsCompletedSuccessfully)
+                    {
+                        _logger.LogInformation("{date} | Configuration retrieval completed.", DateTime.Now);
+                    }
+                    else if (dropboxConfigInitialization.IsFaulted)
+                    {
+                        throw new Exception($"Could not retrieve Dropbox configuration informations");
+                    }
+
+                    _dropboxConfig = dropboxConfigInitialization.Result;
+                }
+
+                string configJson = JsonConvert.SerializeObject(_dropboxConfig);
+
+                File.WriteAllText(configFilePath, configJson);
+            }
+
+            _dropboxClient = new DropboxClient(_dropboxConfig.AccessToken);
 
             if (!CheckDropboxClient()) throw new Exception($"An error occured during Dropbox Client checkout. Please read the precedent " +
                 $"logs to understand the error");
 
             if (!Task.Run(async () => await VerifyRootFolder()).Result)
                 throw new Exception($"An error occured during folder checkout or creation. Please read the precedent logs to understand " +
-                    $"the error");
+                    $"the error");        
         }
 
         public async Task<DropboxSavedFile?> SaveUnprocessedFile(string fileName, DateTime createdAt, string fileRelativePath,
@@ -171,7 +239,11 @@ namespace DropboxSync.BLL.Services
 
             if (isProcess)
             {
-                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{FileTypes.Dossiers.ToString().ToUpper()}/{dossierName}/{fileType.ToString().ToUpper()}/";
+                newPath = $"/{ROOT_FOLDER}" +
+                    $"/{fileCreationDate.Year}" +
+                    $"/{FileTypes.Dossiers.ToString().ToUpper()}" +
+                    $"/{dossierName}" +
+                    $"/{fileType.ToString().ToUpper()}/";
             }
             else
             {
@@ -226,6 +298,63 @@ namespace DropboxSync.BLL.Services
             _logger.LogInformation("{date} | File with ID \"{id}\" have been successfully removed!", DateTime.Now, dropboxId);
 
             return true;
+        }
+
+        private async Task<DropboxConfiguration> InitDropboxConfiguration()
+        {
+            string? code = Environment.GetEnvironmentVariable("DROPBOX_CODE");
+            if (string.IsNullOrEmpty(code))
+            {
+                throw new Exception($"Please read the documentation and provided a valid Dropbox OAuth2 code as an environment variable");
+            }
+
+            using HttpClient httpClient = new HttpClient();
+            string authorizationScheme = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{API_KEY}:{API_SECRET}"));
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authorizationScheme);
+
+            KeyValuePair<string, string>[] data = new[]
+            {
+                new KeyValuePair<string, string>("code",code),
+                new KeyValuePair<string, string>("grant_type","authorization_code")
+            };
+
+            FormUrlEncodedContent content = new FormUrlEncodedContent(data);
+            HttpResponseMessage response = await httpClient.PostAsync("https://api.dropboxapi.com/oauth2/token", content);
+            if (response is null)
+            {
+                throw new Exception($"{typeof(HttpResponseMessage)} returned null");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"HTTP Request failed with status : \"{response.StatusCode}\".");
+            }
+
+            if (response.Content is null)
+            {
+                throw new Exception($"HTTP Request content \"{nameof(response.Content)}\" is null");
+            }
+
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("{date} | HTTP Request response received : {response}", DateTime.Now, jsonResponse);
+
+            AccessTokenResponse accessTokenResponse = JsonConvert.DeserializeObject<AccessTokenResponse>(jsonResponse);
+            if (accessTokenResponse is null)
+            {
+                throw new Exception($"Deserialized object of type \"{typeof(AccessTokenResponse)}\" is null");
+            }
+
+            DropboxConfiguration dropboxConfiguration = new DropboxConfiguration(accessTokenResponse.refresh_token,
+                accessTokenResponse.token_type, accessTokenResponse.scope);
+
+            dropboxConfiguration.SetAccessToken(accessTokenResponse.access_token);
+
+            if (!dropboxConfiguration.IsValid)
+            {
+                throw new Exception($"One of {nameof(dropboxConfiguration)}'s properties is invalid.\n{dropboxConfiguration}");
+            }
+
+            return dropboxConfiguration;
         }
 
         /// <summary>
@@ -291,8 +420,7 @@ namespace DropboxSync.BLL.Services
                 return;
             }
 
-            Environment.SetEnvironmentVariable("DROPBOX_REFRESH_TOKEN", accessTokenResponse.refresh_token);
-            AccessToken = accessTokenResponse.access_token;
+            _dropboxConfig.SetAccessToken(accessTokenResponse.access_token);
         }
 
         /// <summary>
@@ -303,15 +431,9 @@ namespace DropboxSync.BLL.Services
         /// <returns></returns>
         private async Task RefreshAccessToken()
         {
-            if (string.IsNullOrEmpty(RefreshToken))
+            if (string.IsNullOrEmpty(_dropboxConfig.RefreshToken))
             {
-                RefreshToken = Environment.GetEnvironmentVariable("DROPBOX_REFRESH_TOKEN") ?? "";
-                if (string.IsNullOrEmpty(RefreshToken))
-                {
-                    _logger.LogError("{date} | Refresh token couldn't be retrieved from environnement variable. Please follow the tutorial " +
-                        "for proper configuration!", DateTime.Now);
-                    return;
-                }
+                throw new Exception($"{nameof(_dropboxConfig.RefreshToken)} is null!");
             }
 
             using HttpClient httpClient = new HttpClient();
@@ -322,7 +444,7 @@ namespace DropboxSync.BLL.Services
             KeyValuePair<string, string>[] data = new[]
             {
                 new KeyValuePair<string, string>("grant_type","refresh_token"),
-                new KeyValuePair<string, string>("refresh_token", RefreshToken)
+                new KeyValuePair<string, string>("refresh_token", _dropboxConfig.RefreshToken)
             };
 
             FormUrlEncodedContent content = new FormUrlEncodedContent(data);
@@ -356,8 +478,7 @@ namespace DropboxSync.BLL.Services
                 return;
             }
 
-            AccessToken = refreshAccessTokenResponse.access_token;
-            TokenType = refreshAccessTokenResponse.token_type;
+            _dropboxConfig.SetAccessToken(refreshAccessTokenResponse.access_token);
         }
 
         /// <summary>
