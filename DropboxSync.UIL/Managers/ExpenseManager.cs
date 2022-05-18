@@ -136,7 +136,7 @@ namespace DropboxSync.UIL.Managers
                     continue;
                 }
 
-                string localFileName = $"{uploadFromRepo.Id}-{uploadFromRepo.OriginalFileName}";
+                string localFileName = $"{uploadFromRepo.UploadId}-{uploadFromRepo.OriginalFileName}";
                 bool localResult = _fileService.Delete(localFileName);
                 if (!localResult)
                 {
@@ -186,7 +186,7 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            string localFileName = $"{uploadFromRepo.Id}-{uploadFromRepo.OriginalFileName}";
+            string localFileName = $"{uploadFromRepo.UploadId}-{uploadFromRepo.OriginalFileName}";
             bool localResult = _fileService.Delete(localFileName);
             if (!localResult)
             {
