@@ -142,6 +142,17 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
+            bool dropboxDossierRemovalResult = Task.Run(async () =>
+                await _dropboxService.DeleteDossierAsync(dossierFromRepo.Name, dossierFromRepo.CreatedAt)).Result;
+
+            if (!dropboxDossierRemovalResult)
+            {
+                _logger.LogError("{date} | An error occured while trying to delete dossier \"{name}\". Please read precedent logs " +
+                    "to understand.", DateTime.Now, dossierFromRepo.Name);
+
+                return false;
+            }
+
             _dossierService.Delete(dossierFromRepo);
 
             if (!_dossierService.SaveChanges())
