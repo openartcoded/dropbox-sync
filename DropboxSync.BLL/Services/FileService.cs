@@ -118,7 +118,6 @@ namespace DropboxSync.BLL.Services
             fileName = fileName.Replace("\"", "");
             string fileExtension = fileName.Split('.').Last();
 
-            // TODO : Make it really content type
             string? contentType = response.Content.Headers?.ContentType?.MediaType;
 
             if (string.IsNullOrEmpty(contentType))
@@ -128,7 +127,8 @@ namespace DropboxSync.BLL.Services
                 return finalOutput;
             }
 
-            string filePath = $"{FILE_DOWNLOAD_DIR}\\{fileId}-{fileName}";
+            string filePath = Path.Combine(FILE_DOWNLOAD_DIR, string.Join('-', fileId, fileName));
+
             await File.WriteAllBytesAsync(filePath, fileData);
             FileInfo fileInfo = new FileInfo(filePath);
             if (!fileInfo.Exists)
@@ -150,9 +150,10 @@ namespace DropboxSync.BLL.Services
         {
             if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
 
-            File.Delete($"{FILE_DOWNLOAD_DIR}\\{fileName}");
+            string filePath = Path.Combine(FILE_DOWNLOAD_DIR, fileName);
+            File.Delete(filePath);
 
-            return !File.Exists($"{FILE_DOWNLOAD_DIR}\\{fileName}");
+            return !File.Exists(filePath);
         }
 
         private async Task<bool> GetToken()
