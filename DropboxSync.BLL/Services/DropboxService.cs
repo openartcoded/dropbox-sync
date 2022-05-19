@@ -229,6 +229,63 @@ namespace DropboxSync.BLL.Services
             return true;
         }
 
+        public async Task<bool> DeleteDossierAsync(string dossierName, DateTime createdAt)
+        {
+            if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
+
+            string dropboxDossiersPath =
+                $"/{ROOT_FOLDER}" +
+                $"/{createdAt.Year}" +
+                $"/{FileTypes.Dossiers.ToString().ToUpper()}";
+
+            ListFolderResult? listFolderResult = await _dropboxClient.Files.ListFolderAsync(dropboxDossiersPath, includeMountedFolders: true);
+
+            if (listFolderResult is null)
+            {
+                _logger.LogError("{date} | Listing dropbox folders at path \"{path}\" returned null!", DateTime.Now, dropboxDossiersPath);
+                return false;
+            }
+
+            bool firstOccurence = true;
+
+            do
+            {
+                if (!firstOccurence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
+
+                foreach (Metadata? metadata in listFolderResult.Entries)
+                {
+                    if (metadata is null)
+                    {
+                        _logger.LogWarning("{date} | A {metadataType} object in {entries} returned null!",
+                            DateTime.Now, typeof(Metadata), nameof(listFolderResult.Entries));
+                        continue;
+                    }
+
+                    if (metadata.IsFolder && metadata.PathDisplay.Equals($"{dropboxDossiersPath}/{dossierName}"))
+                    {
+                        DeleteResult? deleteResult = await _dropboxClient.Files.DeleteV2Async($"{dropboxDossiersPath}/{dossierName}");
+
+                        if (deleteResult is null)
+                        {
+                            _logger.LogError("{date} | The deletion of folder at path \"{path}\" returned null!",
+                                DateTime.Now, metadata.PathDisplay);
+                            return false;
+                        }
+
+                        _logger.LogInformation("{date} | Folder successfully deleted in Dropbox at path \"{path}\"",
+                            DateTime.Now, deleteResult.Metadata.PathDisplay);
+
+                        return true;
+                    }
+                }
+            } while (listFolderResult.HasMore);
+
+            _logger.LogWarning("{date} | No folder was found in Dropbox at path \"{path}\" with dossier name \"{dossierName}\"",
+                DateTime.Now, dropboxDossiersPath, dossierName);
+
+            return true;
+        }
+
         public async Task<DropboxSavedFile?> SaveDossierAsync(string dossierName, string fileName, string dossierRelativePath, DateTime createdAt)
         {
             if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
