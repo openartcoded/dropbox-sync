@@ -180,7 +180,8 @@ namespace DropboxSync.UIL
                             DateTime.Now, typeof(DossierExpensesAddedModel));
                         return false;
                     }
-                    return false;
+
+                    return _dossierManager.AddExpense(expensesAddedModel);
 
                 case BrokerEvent.ExpenseRemovedFromDossier:
 

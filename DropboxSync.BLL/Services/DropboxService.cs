@@ -330,7 +330,7 @@ namespace DropboxSync.BLL.Services
             DropboxMovedFile? finalOutput = null;
 
             // TODO : Check if dropboxFilePath is the correct path of the file.
-            Metadata? metadata = await _dropboxClient.Files.GetMetadataAsync(dropboxFileId);
+            Metadata? metadata = await _dropboxClient.Files.GetMetadataAsync($"id:{dropboxFileId}");
 
             if (metadata is null)
             {
@@ -344,22 +344,7 @@ namespace DropboxSync.BLL.Services
                 return finalOutput;
             }
 
-            SearchV2Result? searchResult = await _dropboxClient.Files.SearchV2Async(metadata.PathDisplay);
-
-            if (searchResult is null)
-            {
-                _logger.LogError("{date} | The result of the search on ID \"{id}\" returned null", DateTime.Now, dropboxFileId);
-                return finalOutput;
-            }
-
-            SearchMatchV2? searchMatch = searchResult.Matches.SingleOrDefault();
-            if (searchMatch is null)
-            {
-                _logger.LogError("{date} | The search result returned more than 1 match.", DateTime.Now);
-                return finalOutput;
-            }
-
-            string dropboxFilePath = searchMatch.Metadata.AsMetadata.Value.PathDisplay;
+            string dropboxFilePath = metadata.PathDisplay;
 
             if (string.IsNullOrEmpty(dropboxFilePath))
             {
@@ -376,11 +361,11 @@ namespace DropboxSync.BLL.Services
                     $"/{fileCreationDate.Year}" +
                     $"/{FileTypes.Dossiers.ToString().ToUpper()}" +
                     $"/{dossierName}" +
-                    $"/{movingFilesType.ToString().ToUpper()}/";
+                    $"/{movingFilesType.ToString().ToUpper()}";
             }
             else
             {
-                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/UNPROCESSED/{movingFilesType.ToString().ToUpper()}/";
+                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/UNPROCESSED/{movingFilesType.ToString().ToUpper()}";
             }
 
             string? verifiedPath = await VerifyFolderExist(newPath, true);
@@ -391,8 +376,9 @@ namespace DropboxSync.BLL.Services
                 return null;
             }
 
-            relocationResult = await _dropboxClient.Files.MoveV2Async(dropboxFilePath, verifiedPath,
-                allowSharedFolder: true, allowOwnershipTransfer: true);
+            string toPath = $"{verifiedPath}/{metadata.Name}";
+
+            relocationResult = await _dropboxClient.Files.MoveV2Async(dropboxFilePath, toPath, allowSharedFolder: true, allowOwnershipTransfer: true);
 
             if (relocationResult is null)
             {
@@ -400,7 +386,7 @@ namespace DropboxSync.BLL.Services
                 return null;
             }
 
-            finalOutput = new DropboxMovedFile(dropboxFilePath, verifiedPath);
+            finalOutput = new DropboxMovedFile(dropboxFilePath, toPath);
 
             return finalOutput;
         }
@@ -714,7 +700,7 @@ namespace DropboxSync.BLL.Services
         {
             if (string.IsNullOrEmpty(folderFullPath)) throw new ArgumentNullException(nameof(folderFullPath));
 
-            ListFolderResult listFolderResult = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}");
+            ListFolderResult listFolderResult = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}", recursive: true);
             if (listFolderResult is null)
             {
                 _logger.LogError("{date} | List folder returned a null object for path {rootPath}", DateTime.Now, $"/{ROOT_FOLDER}");
