@@ -321,41 +321,54 @@ namespace DropboxSync.BLL.Services
             return dropboxSaved;
         }
 
-        public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, string dropboxFilePath, DateTime fileCreationDate,
-            FileTypes fileType, bool isProcess, string? dossierName = null)
+        public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, DateTime fileCreationDate, FileTypes movingFilesType,
+            bool isProcess, string? dossierName = null)
         {
             if (string.IsNullOrEmpty(dropboxFileId)) throw new ArgumentNullException(nameof(dropboxFileId));
-            if (string.IsNullOrEmpty(dropboxFilePath)) throw new ArgumentNullException(nameof(dropboxFilePath));
             if (string.IsNullOrEmpty(dossierName) && isProcess) throw new ArgumentNullException(nameof(dossierName));
 
             DropboxMovedFile? finalOutput = null;
 
             // TODO : Check if dropboxFilePath is the correct path of the file.
-            SearchV2Result searchResult = await _dropboxClient.Files.SearchV2Async(dropboxFilePath);
+            Metadata? metadata = await _dropboxClient.Files.GetMetadataAsync(dropboxFileId);
+
+            if (metadata is null)
+            {
+                _logger.LogError("{date} | There is no file with id \"{fileId}\" registered in Dropbox", DateTime.Now, dropboxFileId);
+                return finalOutput;
+            }
+
+            if (!metadata.IsFile)
+            {
+                _logger.LogError("{date} | The file with ID \"{id}\" is not a file.", DateTime.Now, dropboxFileId);
+                return finalOutput;
+            }
+
+            SearchV2Result? searchResult = await _dropboxClient.Files.SearchV2Async(metadata.PathDisplay);
 
             if (searchResult is null)
             {
-                _logger.LogError("{date} | There is no file with id \"{fileId}\" registered in Dropbox", DateTime.Now, dropboxFilePath);
+                _logger.LogError("{date} | The result of the search on ID \"{id}\" returned null", DateTime.Now, dropboxFileId);
                 return finalOutput;
             }
 
-            if (searchResult.Matches.Count != 1)
+            SearchMatchV2? searchMatch = searchResult.Matches.SingleOrDefault();
+            if (searchMatch is null)
             {
-                _logger.LogError("{date} | More than one file was found at the location \"{filePath}\"", DateTime.Now, dropboxFilePath);
+                _logger.LogError("{date} | The search result returned more than 1 match.", DateTime.Now);
                 return finalOutput;
             }
 
-            string matchPath = searchResult.Matches.First().Metadata.AsMetadata.Value.PathDisplay;
-            if (!matchPath.Equals(dropboxFilePath))
+            string dropboxFilePath = searchMatch.Metadata.AsMetadata.Value.PathDisplay;
+
+            if (string.IsNullOrEmpty(dropboxFilePath))
             {
-                _logger.LogError("{date} | The retrieved match's path from dropbox is different of the provided file path. " +
-                    "Dropbox math file path\n\"{dropboxPath}\"\nGiven path:\n\"{filePath}\"", DateTime.Now, matchPath, dropboxFilePath);
+                _logger.LogError("{date} | The match's path is null or an empty string!", DateTime.Now);
                 return finalOutput;
             }
 
             RelocationResult relocationResult;
             string newPath;
-
 
             if (isProcess)
             {
@@ -363,11 +376,11 @@ namespace DropboxSync.BLL.Services
                     $"/{fileCreationDate.Year}" +
                     $"/{FileTypes.Dossiers.ToString().ToUpper()}" +
                     $"/{dossierName}" +
-                    $"/{fileType.ToString().ToUpper()}/";
+                    $"/{movingFilesType.ToString().ToUpper()}/";
             }
             else
             {
-                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/{fileType.ToString().ToUpper()}/";
+                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/UNPROCESSED/{movingFilesType.ToString().ToUpper()}/";
             }
 
             string? verifiedPath = await VerifyFolderExist(newPath, true);

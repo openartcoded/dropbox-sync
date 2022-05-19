@@ -17,7 +17,7 @@ namespace DropboxSync.UIL.Enums
         InvoiceRemoved,
         InvoiceRestored,
         DossierCreated,
-        ExpenseAddedToDossier,
+        ExpensesAddedToDossier,
         ExpenseRemovedFromDossier,
         InvoiceAddedToDossier,
         InvoiceRemovedFromDossier,

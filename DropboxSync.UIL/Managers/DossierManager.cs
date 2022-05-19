@@ -21,9 +21,11 @@ namespace DropboxSync.UIL.Managers
         private readonly IFileService _fileService;
         private readonly IDropboxService _dropboxService;
         private readonly IUploadService _uploadService;
+        private readonly IExpenseService _expenseService;
+        private readonly IInvoiceService _invoiceService;
 
         public DossierManager(ILogger<DossierManager> logger, IMapper mapper, IDossierService dossierService, IFileService fileService,
-            IDropboxService dropboxService, IUploadService uploadService)
+            IDropboxService dropboxService, IUploadService uploadService, IExpenseService expenseService, IInvoiceService invoiceService)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -37,6 +39,10 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(dropboxService));
             _uploadService = uploadService ??
                 throw new ArgumentNullException(nameof(uploadService));
+            _expenseService = expenseService ??
+                throw new ArgumentNullException(nameof(expenseService));
+            _invoiceService = invoiceService ??
+                throw new ArgumentNullException(nameof(invoiceService));
         }
 
         public bool CloseDossier(DossierCloseModel model)
@@ -246,7 +252,14 @@ namespace DropboxSync.UIL.Managers
                     continue;
                 }
 
-                IEnumerable<UploadEntity>? uploadsFromRepo = _uploadService.GetExpenseRelatedUploads(Guid.Parse(expenseId));
+                ExpenseEntity? expenseFromRepo = _expenseService.GetById(Guid.Parse(expenseId));
+                if (expenseFromRepo is null)
+                {
+                    _logger.LogWarning("{date} | There is no expense in the database with ID \"{id}\"", DateTime.Now, expenseId);
+                    continue;
+                }
+
+                IEnumerable<UploadEntity>? uploadsFromRepo = _uploadService.GetExpenseRelatedUploads(expenseFromRepo.Id);
                 if (uploadsFromRepo is null)
                 {
                     _logger.LogWarning("{date} | There is no uploads for expense with ID : \"{id}\"", DateTime.Now, expenseId);
@@ -262,9 +275,23 @@ namespace DropboxSync.UIL.Managers
                         continue;
                     }
 
-                    _dropboxService.MoveFile(upload.DropboxFileId, "", new DateTime(), FileTypes.Expenses, true, dossierFromRepo.Name);
+                    DropboxMovedFile? dropboxMovedFile = Task.Run(async () =>
+                        await _dropboxService
+                            .MoveFile(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, true, dossierFromRepo.Name))
+                            .Result;
+
+                    if (dropboxMovedFile is null)
+                    {
+                        _logger.LogError("{date} | Couldn't move file \"{id}\"", DateTime.Now, upload.Id);
+                        continue;
+                    }
+
+                    _logger.LogInformation("{date} | Upload with ID \"{id}\" moved from \"{oldPath}\" to \"{newPath}\"",
+                        DateTime.Now, upload.UploadId, dropboxMovedFile.OldPath, dropboxMovedFile.NewPath);
                 }
             }
+
+            return true;
         }
 
         public bool AddInvoice(DossierInvoiceAddedModel model)
