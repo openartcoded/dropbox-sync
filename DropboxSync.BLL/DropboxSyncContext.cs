@@ -27,7 +27,7 @@ namespace DropboxSync.BLL
 
             var str = AppDomain.CurrentDomain.BaseDirectory;
 
-            optionsBuilder.UseSqlite($"Filename={str}{databaseFileName}", options =>
+            optionsBuilder.UseSqlite($"Filename={str}{databaseFileName}; Pooling=False", options =>
             {
                 // Add options
             });
