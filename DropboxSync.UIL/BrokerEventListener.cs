@@ -171,7 +171,7 @@ namespace DropboxSync.UIL
 
                     return _expenseManager.RemoveExpenseAttachment(expenseAttachmentRemoved);
 
-                case BrokerEvent.ExpenseAddedToDossier:
+                case BrokerEvent.ExpensesAddedToDossier:
 
                     DossierExpensesAddedModel? expensesAddedModel = JsonConvert.DeserializeObject<DossierExpensesAddedModel>(jsonObj);
                     if (expensesAddedModel is null)
