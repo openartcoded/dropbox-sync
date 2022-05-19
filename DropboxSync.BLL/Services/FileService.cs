@@ -45,9 +45,13 @@ namespace DropboxSync.BLL.Services
                 throw new ArgumentNullException(nameof(logger));
             _httpClient = new HttpClient();
 
-            if (!Directory.Exists(FILE_DOWNLOAD_DIR))
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            string filesDirectory = Path.Join(appData, FILE_DOWNLOAD_DIR);
+
+            if (!Directory.Exists(filesDirectory))
             {
-                Directory.CreateDirectory(FILE_DOWNLOAD_DIR);
+                Directory.CreateDirectory(filesDirectory);
             }
         }
 

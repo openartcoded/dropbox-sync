@@ -12,6 +12,18 @@ var host = new HostBuilder()
     })
     .ConfigureServices(services =>
     {
+        // Settings ApplicationData App's path
+
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string appPath = Path.Join(appData, "OAC-DropboxSync");
+
+        if (!Directory.Exists(appPath))
+        {
+            Directory.CreateDirectory(appPath);
+        }
+
+        Environment.SetEnvironmentVariable("DROPBOX_APPDATA_PATH", appPath);
+
         services.AddHostedService<ShutdownManager>();
 
         services.ConfigureBusinessLayer();

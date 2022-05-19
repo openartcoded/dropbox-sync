@@ -23,11 +23,15 @@ namespace DropboxSync.BLL
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            string databaseFileName = Environment.GetEnvironmentVariable("DATABASE_FILE_NAME") ?? "DropboxSyncDatabase.db";
+            string dbName = Environment.GetEnvironmentVariable("DROPBOX_DATABASE_NAME") ??
+                "DropboxSyncDatabase";
 
-            var str = AppDomain.CurrentDomain.BaseDirectory;
+            string appPath = Environment.GetEnvironmentVariable("DROPBOX_APPDATA_PATH") ??
+                throw new NullReferenceException($"Environnement variable DROPBOX_APPDATA_PATH couldn't be retrieved!");
 
-            optionsBuilder.UseSqlite($"Filename={str}{databaseFileName}; Pooling=False", options =>
+            string dbPath = Path.Join(appPath, dbName);
+
+            optionsBuilder.UseSqlite($"Data Source={dbPath}", options =>
             {
                 // Add options
             });
