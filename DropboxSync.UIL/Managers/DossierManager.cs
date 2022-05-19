@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using DropboxSync.BLL;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
 using DropboxSync.Helpers;
@@ -227,7 +228,43 @@ namespace DropboxSync.UIL.Managers
 
         public bool AddExpense(DossierExpensesAddedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier with ID \"{id}\"", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            foreach (string? expenseId in model.ExpenseIds)
+            {
+                if (string.IsNullOrEmpty(expenseId))
+                {
+                    _logger.LogWarning("{date} | An expense ID in the list is null or an empty string.", DateTime.Now);
+                    continue;
+                }
+
+                IEnumerable<UploadEntity>? uploadsFromRepo = _uploadService.GetExpenseRelatedUploads(Guid.Parse(expenseId));
+                if (uploadsFromRepo is null)
+                {
+                    _logger.LogWarning("{date} | There is no uploads for expense with ID : \"{id}\"", DateTime.Now, expenseId);
+                    continue;
+                }
+
+                foreach (UploadEntity? upload in uploadsFromRepo)
+                {
+                    if (upload is null)
+                    {
+                        _logger.LogWarning("{date} | An upload of type \"{uploadType}\" in \"{listName}\" is null.",
+                            DateTime.Now, typeof(UploadEntity), nameof(uploadsFromRepo));
+                        continue;
+                    }
+
+                    _dropboxService.MoveFile(upload.DropboxFileId, "", new DateTime(), FileTypes.Expenses, true, dossierFromRepo.Name);
+                }
+            }
         }
 
         public bool AddInvoice(DossierInvoiceAddedModel model)

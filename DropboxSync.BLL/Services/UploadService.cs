@@ -1,5 +1,6 @@
 ﻿using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -49,6 +50,28 @@ namespace DropboxSync.BLL.Services
             if (string.IsNullOrEmpty(uploadId)) throw new ArgumentNullException(nameof(uploadId));
 
             return _context.Uploads.SingleOrDefault(u => u.UploadId.Equals(uploadId));
+        }
+
+        public UploadEntity? GetInvoiceRelatedUpload(Guid invoiceId)
+        {
+            InvoiceEntity? invoiceFromRepo = _context.Invoices.Find(invoiceId);
+
+            if (invoiceFromRepo is null) return null;
+
+            UploadEntity? uploadFromRepo = _context.Uploads.SingleOrDefault(u => u.Id == invoiceFromRepo.UploadId);
+
+            return uploadFromRepo;
+        }
+
+        public IEnumerable<UploadEntity>? GetExpenseRelatedUploads(Guid expenseId)
+        {
+            ExpenseEntity? expenseFromRepo = _context.Expenses
+                .Include(e => e.Uploads)
+                .SingleOrDefault(e => e.Id == expenseId);
+
+            if (expenseFromRepo is null) return null;
+
+            return expenseFromRepo.Uploads;
         }
 
         public bool SaveChanges()
