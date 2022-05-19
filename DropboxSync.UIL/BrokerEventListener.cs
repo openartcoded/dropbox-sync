@@ -192,7 +192,8 @@ namespace DropboxSync.UIL
                             DateTime.Now, typeof(DossierExpenseRemovedModel));
                         return false;
                     }
-                    return false;
+
+                    return _dossierManager.RemoveExpense(dossierExpenseRemoved);
 
                 case BrokerEvent.InvoiceGenerated:
 
@@ -230,8 +231,33 @@ namespace DropboxSync.UIL
                     return _invoiceManager.Restore(invoiceRestored);
 
                 case BrokerEvent.InvoiceRemovedFromDossier:
+
+                    DossierInvoiceRemovedModel? dossierInvoiceRemoved = JsonConvert.DeserializeObject<DossierInvoiceRemovedModel>(jsonObj);
+
+                    if (dossierInvoiceRemoved is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DossierInvoiceRemovedModel));
+
+                        return false;
+                    }
+
+                    return _dossierManager.RemoveInvoice(dossierInvoiceRemoved);
+
                 case BrokerEvent.InvoiceAddedToDossier:
-                // Redirect all dossier events with _dossierManager.Redirect()
+
+                    DossierInvoiceAddedModel? dossierInvoiceAdded = JsonConvert.DeserializeObject<DossierInvoiceAddedModel>(jsonObj);
+
+                    if (dossierInvoiceAdded is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DossierInvoiceAddedModel));
+
+                        return false;
+                    }
+
+                    return _dossierManager.AddInvoice(dossierInvoiceAdded);
+
                 case BrokerEvent.DossierCreated:
 
                     DossierCreateModel? dossierCreate = JsonConvert.DeserializeObject<DossierCreateModel>(jsonObj);

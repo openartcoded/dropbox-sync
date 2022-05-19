@@ -296,17 +296,165 @@ namespace DropboxSync.UIL.Managers
 
         public bool AddInvoice(DossierInvoiceAddedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier in the database with ID \"{id}\"", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            InvoiceEntity? invoiceFromRepo = _invoiceService.GetById(Guid.Parse(model.InvoiceId));
+
+            if (invoiceFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no invoice with ID \"{id}\" in the database", DateTime.Now, model.InvoiceId);
+                return false;
+            }
+
+            if (invoiceFromRepo.UploadId is null)
+            {
+                _logger.LogWarning("{date} | Invoice \"{id}\" doesn't have any attached upload.", DateTime.Now, invoiceFromRepo.UploadId);
+                return false;
+            }
+
+            UploadEntity? uploadFromRepo = _uploadService.GetById(invoiceFromRepo.UploadId.Value);
+
+            if (uploadFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no upload in the database with ID \"{id}\"", DateTime.Now, invoiceFromRepo.UploadId.Value);
+                return false;
+            }
+
+            DropboxMovedFile? dropboxMoveResult = Task.Run(async () =>
+                await _dropboxService
+                .MoveFile(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, true, dossierFromRepo.Name))
+                .Result;
+
+            if (dropboxMoveResult is null)
+            {
+                _logger.LogError("{date} | Couldn't move upload with ID \"{id}\"", DateTime.Now, uploadFromRepo.Id);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Successfully moved upload with ID \"{id}\" from \"{oldPath}\" to \"{newPath}\"",
+                DateTime.Now, uploadFromRepo.Id, dropboxMoveResult.OldPath, dropboxMoveResult.NewPath);
+
+            return true;
         }
 
         public bool RemoveExpense(DossierExpenseRemovedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier with ID \"{id}\"", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(model.ExpenseId))
+            {
+                _logger.LogWarning("{date} | The expense ID is null or an empty string.", DateTime.Now);
+                return false;
+            }
+
+            ExpenseEntity? expenseFromRepo = _expenseService.GetById(Guid.Parse(model.ExpenseId));
+
+            if (expenseFromRepo is null)
+            {
+                _logger.LogWarning("{date} | There is no expense in the database with ID \"{id}\"", DateTime.Now, model.ExpenseId);
+                return false;
+            }
+
+            IEnumerable<UploadEntity>? uploadsFromRepo = _uploadService.GetExpenseRelatedUploads(expenseFromRepo.Id);
+
+            if (uploadsFromRepo is null)
+            {
+                _logger.LogWarning("{date} | There is no uploads for expense with ID : \"{id}\"", DateTime.Now, expenseFromRepo.Id);
+                return false;
+            }
+
+            foreach (UploadEntity? upload in uploadsFromRepo)
+            {
+                if (upload is null)
+                {
+                    _logger.LogWarning("{date} | An upload of type \"{uploadType}\" in \"{listName}\" is null.",
+                        DateTime.Now, typeof(UploadEntity), nameof(uploadsFromRepo));
+                    continue;
+                }
+
+                DropboxMovedFile? dropboxMovedFile = Task.Run(async () =>
+                    await _dropboxService
+                        .MoveFile(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, false))
+                        .Result;
+
+                if (dropboxMovedFile is null)
+                {
+                    _logger.LogError("{date} | Couldn't move file \"{id}\"", DateTime.Now, upload.Id);
+                    continue;
+                }
+
+                _logger.LogInformation("{date} | Upload with ID \"{id}\" moved from \"{oldPath}\" to \"{newPath}\"",
+                    DateTime.Now, upload.UploadId, dropboxMovedFile.OldPath, dropboxMovedFile.NewPath);
+            }
+
+            return true;
         }
 
         public bool RemoveInvoice(DossierInvoiceRemovedModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier in the database with ID \"{id}\"", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            InvoiceEntity? invoiceFromRepo = _invoiceService.GetById(Guid.Parse(model.InvoiceId));
+
+            if (invoiceFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no invoice with ID \"{id}\" in the database", DateTime.Now, model.InvoiceId);
+                return false;
+            }
+
+            if (invoiceFromRepo.UploadId is null)
+            {
+                _logger.LogWarning("{date} | Invoice \"{id}\" doesn't have any attached upload.", DateTime.Now, invoiceFromRepo.UploadId);
+                return false;
+            }
+
+            UploadEntity? uploadFromRepo = _uploadService.GetById(invoiceFromRepo.UploadId.Value);
+
+            if (uploadFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no upload in the database with ID \"{id}\"", DateTime.Now, invoiceFromRepo.UploadId.Value);
+                return false;
+            }
+
+            DropboxMovedFile? dropboxMoveResult = Task.Run(async () =>
+                await _dropboxService
+                .MoveFile(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, false))
+                .Result;
+
+            if (dropboxMoveResult is null)
+            {
+                _logger.LogError("{date} | Couldn't move upload with ID \"{id}\"", DateTime.Now, uploadFromRepo.Id);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Successfully moved upload with ID \"{id}\" from \"{oldPath}\" to \"{newPath}\"",
+                DateTime.Now, uploadFromRepo.Id, dropboxMoveResult.OldPath, dropboxMoveResult.NewPath);
+
+            return true;
         }
 
         bool IEventManager.Create<T>(T model)

@@ -79,19 +79,11 @@ namespace DropboxSync.UIL.Managers
                 Id = Guid.NewGuid()
             };
 
-            _uploadService.Create(upload);
-
-            if (!_uploadService.SaveChanges())
-            {
-                _logger.LogError("{date} | The upload couldn't be saved in the database!", DateTime.Now);
-                return false;
-            }
+            entityToCreate.Upload = upload;
 
             _invoiceService.Create(entityToCreate);
 
-            bool saveResult = _invoiceService.SaveChanges();
-
-            if (!saveResult)
+            if (!_invoiceService.SaveChanges())
             {
                 _logger.LogError("{date} | Couldn't save the Invoice in the database", DateTime.Now);
                 return false;
@@ -99,7 +91,7 @@ namespace DropboxSync.UIL.Managers
 
             _logger.LogInformation("{date} | Invoice and Upload successfully saved in the database", DateTime.Now);
 
-            return saveResult;
+            return true;
         }
 
         public bool Delete<T>(T entity) where T : InvoiceRemovedModel
