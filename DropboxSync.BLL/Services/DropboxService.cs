@@ -293,9 +293,9 @@ namespace DropboxSync.BLL.Services
 
             DropboxSavedFile? dropboxSaved = null;
 
-            string dropboxDestinationPath = $"/{createdAt.Year}/{FileTypes.Dossiers.ToString().ToUpper()}/{dossierName}";
+            string dropboxDestinationPath = $"/{ROOT_FOLDER}/{createdAt.Year}/{FileTypes.Dossiers.ToString().ToUpper()}/{dossierName}";
 
-            string? dropboxFolderPath = await CheckFolderAndCreate(dropboxDestinationPath);
+            string? dropboxFolderPath = await VerifyFolderExist(dropboxDestinationPath, true);
             if (string.IsNullOrEmpty(dropboxFolderPath))
             {
                 _logger.LogError("{date} | There is no destination folder for this dossier", DateTime.Now);
@@ -321,7 +321,7 @@ namespace DropboxSync.BLL.Services
             return dropboxSaved;
         }
 
-        public async Task<DropboxMovedFile?> MoveFile(string dropboxFileId, DateTime fileCreationDate, FileTypes movingFilesType,
+        public async Task<DropboxMovedFile?> MoveFileAsync(string dropboxFileId, DateTime fileCreationDate, FileTypes movingFilesType,
             bool isProcess, string? dossierName = null)
         {
             if (string.IsNullOrEmpty(dropboxFileId)) throw new ArgumentNullException(nameof(dropboxFileId));

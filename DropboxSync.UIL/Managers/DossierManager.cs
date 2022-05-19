@@ -277,7 +277,7 @@ namespace DropboxSync.UIL.Managers
 
                     DropboxMovedFile? dropboxMovedFile = Task.Run(async () =>
                         await _dropboxService
-                            .MoveFile(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, true, dossierFromRepo.Name))
+                            .MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, true, dossierFromRepo.Name))
                             .Result;
 
                     if (dropboxMovedFile is null)
@@ -330,7 +330,7 @@ namespace DropboxSync.UIL.Managers
 
             DropboxMovedFile? dropboxMoveResult = Task.Run(async () =>
                 await _dropboxService
-                .MoveFile(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, true, dossierFromRepo.Name))
+                .MoveFileAsync(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, true, dossierFromRepo.Name))
                 .Result;
 
             if (dropboxMoveResult is null)
@@ -390,7 +390,7 @@ namespace DropboxSync.UIL.Managers
 
                 DropboxMovedFile? dropboxMovedFile = Task.Run(async () =>
                     await _dropboxService
-                        .MoveFile(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, false))
+                        .MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, false))
                         .Result;
 
                 if (dropboxMovedFile is null)
@@ -442,7 +442,7 @@ namespace DropboxSync.UIL.Managers
 
             DropboxMovedFile? dropboxMoveResult = Task.Run(async () =>
                 await _dropboxService
-                .MoveFile(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, false))
+                .MoveFileAsync(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, false))
                 .Result;
 
             if (dropboxMoveResult is null)
