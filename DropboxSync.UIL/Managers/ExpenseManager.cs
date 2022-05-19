@@ -41,14 +41,18 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(uploadService));
         }
 
-        // TODO : 1. Create a local backup
-        // TODO : 2. Create a dropbox backup
-        // TODO : 3. Save information in database
+        /// <summary>
+        /// Save uploads received from the event to Dropbox as unprocessed expenses then save it locally and finally create row
+        /// in the database containing event's informations
+        /// </summary>
+        /// <typeparam name="T">Type <see cref="ExpenseReceivedModel"/></typeparam>
+        /// <param name="model">Received event's model of type <see cref="ExpenseReceivedModel"/></param>
+        /// <returns><c>true</c> If every step completed successfully. <c>false</c> Otherwise</returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public bool Create<T>(T model) where T : ExpenseReceivedModel
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
 
-            // TODO : Create mapper profile from ExpenseReceivedModel to ExpenseEntity
             ExpenseEntity expenseEntity = _mapper.Map<ExpenseEntity>(model);
 
             if (expenseEntity is null)
@@ -107,9 +111,6 @@ namespace DropboxSync.UIL.Managers
             return true;
         }
 
-        // TODO : 1. Delete file from local backup
-        // TODO : 2. Delete file from Dropbox
-        // TODO : 3. Delete rows from database
         public bool Delete<T>(T entity) where T : ExpenseRemovedModel
         {
             if (entity is null) throw new ArgumentNullException(nameof(entity));
@@ -166,9 +167,6 @@ namespace DropboxSync.UIL.Managers
             return _expenseService.SaveChanges();
         }
 
-        // TODO : 1. Delete file from local backup
-        // TODO : 2. Delete file from Dropbox
-        // TODO : 3. Delete upload row from database
         public bool RemoveExpenseAttachment(ExpenseAttachmentRemovedModel model)
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
@@ -205,9 +203,6 @@ namespace DropboxSync.UIL.Managers
             throw new NotImplementedException();
         }
 
-        // TODO : 1. Save new file over old one in local backup
-        // TODO : 2. Save new file over old one in Dropbox
-        // TODO : 3. Update information in the database
         public bool UpdateLabel(ExpenseLabelUpdatedModel model)
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
@@ -229,9 +224,6 @@ namespace DropboxSync.UIL.Managers
             return _expenseService.SaveChanges();
         }
 
-        // TODO : 1. Save new file over old one in local backup
-        // TODO : 2. Save new file over old one in Dropbox
-        // TODO : 3. Update information in the database
         public bool UpdatePrice(ExpensePriceUpdatedModel model)
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
