@@ -38,16 +38,6 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(uploadService));
         }
 
-        public bool AddExpense(DossierExpensesAddedModel model)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool AddInvoice(DossierInvoiceAddedModel model)
-        {
-            throw new NotImplementedException();
-        }
-
         public bool CloseDossier(DossierCloseModel model)
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
@@ -111,17 +101,125 @@ namespace DropboxSync.UIL.Managers
             return true;
         }
 
-        public bool Create<T>(T entity) where T : DossierCreateModel
+        public bool Create<T>(T model) where T : DossierCreateModel
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity dossierToCreate = _mapper.Map<DossierEntity>(model);
+
+            bool dropboxResult = Task.Run(async () =>
+                await _dropboxService.CreateDossierAsync(dossierToCreate.Name, dossierToCreate.CreatedAt, BLL.FileTypes.Dossiers)).Result;
+
+            if (!dropboxResult)
+            {
+                _logger.LogError("{date} | Couldn't create dossier in Dropbox", DateTime.Now);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Dossier \"{name}\" created in Dropbox", DateTime.Now, dossierToCreate.Name);
+
+            _dossierService.Create(dossierToCreate);
+
+            if (!_dossierService.SaveChanges())
+            {
+                _logger.LogError("{date} | Couldn't create dossier in the database", DateTime.Now);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Dossier \"{name}\" created in the database", DateTime.Now, dossierToCreate.Name);
+
+            return true;
         }
 
-        public bool Delete<T>(T entity) where T : DossierDeleteModel
+        public bool Delete<T>(T model) where T : DossierDeleteModel
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier in the database with ID : {id}", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            _dossierService.Delete(dossierFromRepo);
+
+            if (!_dossierService.SaveChanges())
+            {
+                _logger.LogError("{date} | Couldn't delete dossier \"{id}\" with name {name} from the database!",
+                    DateTime.Now, dossierFromRepo.Id, dossierFromRepo.Name);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Dossier \"{name}\" with ID \"{id}\" successfully deleted from the database.",
+                DateTime.Now, dossierFromRepo.Name, dossierFromRepo.Id);
+
+            return true;
         }
 
         public bool Recall(DossierRecallForModificationModel model)
+        {
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier with ID \"{id}\" in the database.", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            dossierFromRepo.DueVat = model.TvaDue;
+            dossierFromRepo.UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp);
+
+            _dossierService.Update(dossierFromRepo);
+
+            if (!_dossierService.SaveChanges())
+            {
+                _logger.LogError("{date} | Couldn't update dossier with ID \"{id}\"", DateTime.Now, dossierFromRepo.Id);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Successfully updated dossier \"{id}\"", DateTime.Now, dossierFromRepo.Id);
+
+            return true;
+        }
+
+        public bool Update<T>(T model) where T : DossierUpdateModel
+        {
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DossierEntity? dossierFromRepo = _dossierService.GetById(Guid.Parse(model.DossierId));
+            if (dossierFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no dossier with ID \"{id}\" in the database", DateTime.Now, model.DossierId);
+                return false;
+            }
+
+            dossierFromRepo.Name = model.Name;
+            dossierFromRepo.Description = model.Description;
+            dossierFromRepo.DueVat = model.TvaDue;
+            dossierFromRepo.UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp);
+
+            _dossierService.Update(dossierFromRepo);
+
+            if (!_dossierService.SaveChanges())
+            {
+                _logger.LogError("{date} | Couldn't update dossier with ID \"{id}\"", DateTime.Now, dossierFromRepo.Id);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Successfully updated dossier \"{name}\" with ID \"{id}\"",
+                DateTime.Now, dossierFromRepo.Name, dossierFromRepo.Id);
+
+            return true;
+        }
+
+        public bool AddExpense(DossierExpensesAddedModel model)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool AddInvoice(DossierInvoiceAddedModel model)
         {
             throw new NotImplementedException();
         }
@@ -132,11 +230,6 @@ namespace DropboxSync.UIL.Managers
         }
 
         public bool RemoveInvoice(DossierInvoiceRemovedModel model)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool Update<T>(T entity) where T : DossierUpdateModel
         {
             throw new NotImplementedException();
         }
