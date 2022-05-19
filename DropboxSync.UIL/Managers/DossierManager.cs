@@ -84,14 +84,7 @@ namespace DropboxSync.UIL.Managers
                 Id = Guid.NewGuid()
             };
 
-            _uploadService.Create(upload);
-
-            if (!_uploadService.SaveChanges())
-            {
-                _logger.LogError("{date} | Could not save file with ID \"{uploadId}\" to the database.", DateTime.Now, model.UploadId);
-                return false;
-            }
-
+            dossierFromRepo.Upload = upload;
             dossierFromRepo.UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp);
             dossierFromRepo.IsClosed = true;
 
