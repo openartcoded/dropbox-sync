@@ -77,7 +77,6 @@ namespace DropboxSync.UIL.Managers
             {
                 ContentType = localSaveResult.ContentType,
                 DropboxFileId = dropboxSavedFile.DropboxFileId,
-                FileExtention = localSaveResult.FileExtension ?? "UNKNOWN",
                 FileSize = localSaveResult.FileSize,
                 OriginalFileName = localSaveResult.FileName,
                 UploadId = model.UploadId,

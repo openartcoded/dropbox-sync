@@ -11,8 +11,7 @@ namespace DropboxSync.BLL.IServices
 
     public interface IDropboxService
     {
-        Task<DropboxSavedFile?> SaveUnprocessedFile(string fileName, DateTime createdAt, string fileRelativePath, FileTypes fileType,
-            string? fileExtension = null);
+        Task<DropboxSavedFile> SaveUnprocessedFileAsync(string fileName, DateTime createdAt, string fileRelativePath, FileTypes fileType);
         Task<bool> CreateDossierAsync(string dossierName, DateTime createdAt, FileTypes fileType);
         Task<bool> DeleteDossierAsync(string dossierName, DateTime createdAt);
         Task<DropboxSavedFile?> SaveDossierAsync(string dossierName, string fileName, string dossierRelativePath, DateTime createdAt);

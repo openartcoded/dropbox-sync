@@ -24,9 +24,6 @@ namespace DropboxSync.BLL.Configurations
             builder.Property(d => d.ContentType)
                 .IsRequired();
 
-            builder.Property(d => d.FileExtention)
-                .IsRequired();
-
             builder.Property(d => d.FileSize)
                 .IsRequired();
         }

@@ -59,8 +59,8 @@ namespace DropboxSync.UIL.Managers
             }
 
             DropboxSavedFile? dropboxSaveResult = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFile(localSaveResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
-                    localSaveResult.RelativePath, FileTypes.Invoices, localSaveResult.FileExtension)).Result;
+                await _dropboxService.SaveUnprocessedFileAsync(localSaveResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                    localSaveResult.RelativePath, FileTypes.Invoices)).Result;
 
             if (dropboxSaveResult is null)
             {
@@ -73,7 +73,6 @@ namespace DropboxSync.UIL.Managers
                 UploadId = model.UploadId,
                 ContentType = localSaveResult.ContentType,
                 DropboxFileId = dropboxSaveResult.DropboxFileId,
-                FileExtention = localSaveResult.FileExtension ?? "UKNOWN",
                 FileSize = localSaveResult.FileSize,
                 OriginalFileName = localSaveResult.FileName,
                 Id = Guid.NewGuid()
@@ -177,8 +176,8 @@ namespace DropboxSync.UIL.Managers
             }
 
             DropboxSavedFile? dropSaveResult = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFile(saveLocalResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
-                    saveLocalResult.RelativePath, FileTypes.Invoices, saveLocalResult.FileExtension)).Result;
+                await _dropboxService.SaveUnprocessedFileAsync(saveLocalResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                    saveLocalResult.RelativePath, FileTypes.Invoices)).Result;
 
             if (dropSaveResult is null)
             {
@@ -191,7 +190,6 @@ namespace DropboxSync.UIL.Managers
                 UploadId = model.UploadId,
                 ContentType = saveLocalResult.ContentType,
                 DropboxFileId = dropSaveResult.DropboxFileId,
-                FileExtention = saveLocalResult.FileExtension ?? "UNKNOWN",
                 FileSize = saveLocalResult.FileSize,
                 OriginalFileName = saveLocalResult.FileName,
                 Id = Guid.NewGuid()

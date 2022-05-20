@@ -72,6 +72,8 @@ namespace DropboxSync.UIL
 
             ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
             receiverLink.Start(200, Message_Received);
+
+            _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
         }
 
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
@@ -88,7 +90,16 @@ namespace DropboxSync.UIL
             EventModel eventModel = JsonConvert.DeserializeObject<EventModel>(textMessage) ??
                 throw new NullReferenceException(nameof(EventModel));
 
-            BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventModel.EventName);
+
+            Enum.TryParse(typeof(BrokerEvent), eventModel.EventName, out object? eventObj);
+
+            if (eventObj is null)
+            {
+                _logger.LogError("{date} | The received event couldn't be treated by the app", DateTime.Now);
+                return;
+            }
+
+            BrokerEvent brokerEvent = (BrokerEvent)eventObj;
             _logger.LogInformation("{date} | Event \"{brokerEvent}\" received", DateTime.Now, brokerEvent);
 
             int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);

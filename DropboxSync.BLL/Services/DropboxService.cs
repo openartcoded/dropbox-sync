@@ -4,6 +4,7 @@ using Dropbox.Api.FileRequests;
 using Dropbox.Api.Files;
 using DropboxSync.BLL.Internals;
 using DropboxSync.BLL.IServices;
+using DropboxSync.Helpers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Net;
@@ -24,6 +25,7 @@ namespace DropboxSync.BLL.Services
         string uid, string account_id);
 
     internal record RefreshAccessTokenResponse(string access_token, string token_type, int expires_in);
+
     public class DropboxService : IDropboxService
     {
         /// <summary>
@@ -45,19 +47,16 @@ namespace DropboxSync.BLL.Services
             "dropbox-sync-configuration.json";
 
         /// <summary>
-        /// Retrieves the declared root folder in Dropbox. If the environnement variable is null then the next folder is used / created:
-        /// <c>OPENARTCODED</c>
+        /// Retrieves the declared root folder in Dropbox. If the environnement variable is null then the next folder is used 
+        /// <code>/OPENARTCODED</code>
+        /// Be aware that the folder name must ALWAYS start with <c>/</c>
         /// </summary>
         private readonly string ROOT_FOLDER = Environment.GetEnvironmentVariable("DROPBOX_ROOT_FOLDER") ??
-            "OPENARTCODED";
+            "/OPENARTCODED";
 
         private readonly ILogger _logger;
         private readonly DropboxClient _dropboxClient;
         private DropboxConfiguration _dropboxConfig;
-
-        //public string AccessToken { get; private set; } = string.Empty;
-        //public string RefreshToken { get; private set; } = string.Empty;
-        //public string TokenType { get; set; } = string.Empty;
 
         /// <summary>
         /// Create an instance of <see cref="DropboxService"/>.
@@ -167,54 +166,57 @@ namespace DropboxSync.BLL.Services
                     $"the error");
         }
 
-        public async Task<DropboxSavedFile?> SaveUnprocessedFile(string fileName, DateTime createdAt, string fileRelativePath,
-            FileTypes fileType, string? fileExtension = null)
+        /// <summary>
+        /// Create a file in Dropbox.
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="createdAt"></param>
+        /// <param name="fileRelativePath"></param>
+        /// <param name="fileType"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public async Task<DropboxSavedFile> SaveUnprocessedFileAsync(string fileName, DateTime createdAt, string fileRelativePath, FileTypes fileType)
         {
             if (string.IsNullOrEmpty(fileRelativePath)) throw new ArgumentNullException(nameof(fileRelativePath));
 
-            DropboxSavedFile? finalOuput = null;
+            string requiredDropboxFolder = GeneratedFolderPath(createdAt.Year, fileType);
 
-            string requiredFolder = $"{createdAt.Year}/UNPROCESSED/{fileType.ToString().ToUpper()}";
-            string? folderDropboxPath = await CheckFolderAndCreate(requiredFolder);
+            string? folderDropboxPath = await VerifyFolderExist(requiredDropboxFolder, true);
             if (string.IsNullOrEmpty(folderDropboxPath))
             {
                 _logger.LogError("{date} | The folder couldn't be checked nor created!", DateTime.Now);
-                return finalOuput;
+                throw new NullValueException(nameof(folderDropboxPath));
             }
 
-            string fileDropboxName = $"{createdAt.ToString("yyyy.MM.dd HHmm")}-{fileName}";
+            string dropboxFileName = GenerateDropboxFilName(fileName, createdAt);
 
-            FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{folderDropboxPath}/{fileDropboxName}"),
-                        new FileStream(fileRelativePath, FileMode.Open));
+            string dropboxDestinationPath = GenerateFileDestinationPath(requiredDropboxFolder, dropboxFileName);
 
-            if (creationResult is null)
-            {
-                _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
-                    DateTime.Now, fileName, folderDropboxPath);
-                return finalOuput;
-            }
+            FileMetadata dropboxUploadResult = await _dropboxClient
+                .Files
+                .UploadAsync(new UploadArg(dropboxDestinationPath), new FileStream(fileRelativePath, FileMode.Open));
 
-            string dropboxId = creationResult.Id.Substring(creationResult.Id.IndexOf(':') + 1);
+            string dropboxId = dropboxUploadResult.Id.Substring(dropboxUploadResult.Id.IndexOf(':') + 1);
 
-            finalOuput = new DropboxSavedFile(dropboxId, creationResult.PathDisplay);
+            DropboxSavedFile finalOuput = new DropboxSavedFile(dropboxId, dropboxUploadResult.PathDisplay);
 
             return finalOuput;
         }
 
-        // TODO : Delete folder if already exist
-        public async Task<bool> CreateDossierAsync(string dossierName, DateTime createdAt, FileTypes fileType)
+        /// <summary>
+        /// Create an empty folder in Dropbox for given year and dossier name
+        /// </summary>
+        /// <param name="dossierName">The name of the dossier</param>
+        /// <param name="createdAt">The dossier creation date</param>
+        /// <returns><c>true</c> If folder was successfully created. <c>false</c> Otherwise.</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public async Task<bool> CreateDossierAsync(string dossierName, DateTime createdAt)
         {
             if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
-            if (fileType != FileTypes.Dossiers) throw new ArgumentOutOfRangeException(nameof(FileTypes));
 
-            string completeFolder = $"/{ROOT_FOLDER}/{createdAt.Year}/{fileType.ToString().ToUpper()}/{dossierName}";
+            string completeFolder = GenerateDossierFolderPath(createdAt.Year, dossierName);
 
-            CreateFolderResult? createFolderResult = await _dropboxClient.Files.CreateFolderV2Async(completeFolder);
-            if (createFolderResult is null)
-            {
-                _logger.LogError("{date} | The folder creation in Dropbox failed!", DateTime.Now);
-                return false;
-            }
+            CreateFolderResult createFolderResult = await _dropboxClient.Files.CreateFolderV2Async(completeFolder);
 
             if (!createFolderResult.Metadata.IsFolder)
             {
@@ -229,14 +231,26 @@ namespace DropboxSync.BLL.Services
             return true;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="dossierName"></param>
+        /// <param name="createdAt"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public async Task<bool> DeleteDossierAsync(string dossierName, DateTime createdAt)
         {
             if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
 
-            string dropboxDossiersPath =
-                $"/{ROOT_FOLDER}" +
-                $"/{createdAt.Year}" +
-                $"/{FileTypes.Dossiers.ToString().ToUpper()}";
+            string dropboxDossiersPath = GeneratedFolderPath(createdAt.Year, FileTypes.Dossiers);
+
+            string? receivedPath = await VerifyFolderExist(dropboxDossiersPath);
+
+            if (string.IsNullOrEmpty(receivedPath))
+            {
+                _logger.LogWarning("{date} | There is no Dossier at path \"{path}\"", DateTime.Now, dropboxDossiersPath);
+                return false;
+            }
 
             ListFolderResult? listFolderResult = await _dropboxClient.Files.ListFolderAsync(dropboxDossiersPath, includeMountedFolders: true);
 
@@ -246,42 +260,17 @@ namespace DropboxSync.BLL.Services
                 return false;
             }
 
-            bool firstOccurence = true;
+            DeleteResult? deleteResult = await _dropboxClient.Files.DeleteV2Async($"{dropboxDossiersPath}/{dossierName}");
 
-            do
+            if (deleteResult is null)
             {
-                if (!firstOccurence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
+                _logger.LogError("{date} | The deletion of folder at path \"{path}\" returned null!",
+                    DateTime.Now, receivedPath);
+                return false;
+            }
 
-                foreach (Metadata? metadata in listFolderResult.Entries)
-                {
-                    if (metadata is null)
-                    {
-                        _logger.LogWarning("{date} | A {metadataType} object in {entries} returned null!",
-                            DateTime.Now, typeof(Metadata), nameof(listFolderResult.Entries));
-                        continue;
-                    }
-
-                    if (metadata.IsFolder && metadata.PathDisplay.Equals($"{dropboxDossiersPath}/{dossierName}"))
-                    {
-                        DeleteResult? deleteResult = await _dropboxClient.Files.DeleteV2Async($"{dropboxDossiersPath}/{dossierName}");
-
-                        if (deleteResult is null)
-                        {
-                            _logger.LogError("{date} | The deletion of folder at path \"{path}\" returned null!",
-                                DateTime.Now, metadata.PathDisplay);
-                            return false;
-                        }
-
-                        _logger.LogInformation("{date} | Folder successfully deleted in Dropbox at path \"{path}\"",
-                            DateTime.Now, deleteResult.Metadata.PathDisplay);
-
-                        return true;
-                    }
-                }
-            } while (listFolderResult.HasMore);
-
-            _logger.LogWarning("{date} | No folder was found in Dropbox at path \"{path}\" with dossier name \"{dossierName}\"",
-                DateTime.Now, dropboxDossiersPath, dossierName);
+            _logger.LogInformation("{date} | Folder successfully deleted in Dropbox at path \"{path}\"",
+                DateTime.Now, deleteResult.Metadata.PathDisplay);
 
             return true;
         }
@@ -293,30 +282,32 @@ namespace DropboxSync.BLL.Services
 
             DropboxSavedFile? dropboxSaved = null;
 
-            string dropboxDestinationPath = $"/{ROOT_FOLDER}/{createdAt.Year}/{FileTypes.Dossiers.ToString().ToUpper()}/{dossierName}";
+            string dropboxDestinationPath = GenerateFileDestinationPath(GeneratedFolderPath(createdAt.Year, FileTypes.Dossiers), dossierName);
 
             string? dropboxFolderPath = await VerifyFolderExist(dropboxDestinationPath, true);
+
             if (string.IsNullOrEmpty(dropboxFolderPath))
             {
                 _logger.LogError("{date} | There is no destination folder for this dossier", DateTime.Now);
                 return dropboxSaved;
             }
 
-            string dropboxFileName = $"{createdAt.ToString("yyyy.MM.dd HHmm")}-{dossierName}";
+            string dropboxFileName = GenerateDropboxFilName(dossierName, createdAt);
+            string destinationPath = GenerateFileDestinationPath(dropboxDestinationPath, dropboxFileName);
 
-            FileMetadata creationResult = await _dropboxClient.Files.UploadAsync(new UploadArg($"{dropboxFolderPath}/{dropboxFileName}"),
+            FileMetadata? dropboxUploadResult = await _dropboxClient.Files.UploadAsync(new UploadArg(destinationPath),
                         new FileStream(dossierRelativePath, FileMode.Open));
 
-            if (creationResult is null)
+            if (dropboxUploadResult is null)
             {
                 _logger.LogError("{date} | File \"{fileName}\" could not be created at path \"{path}\"",
                     DateTime.Now, fileName, dropboxFolderPath);
                 return dropboxSaved;
             }
 
-            string dropboxId = creationResult.Id.Substring(creationResult.Id.IndexOf(':') + 1);
+            string dropboxId = dropboxUploadResult.Id.Substring(dropboxUploadResult.Id.IndexOf(':') + 1);
 
-            dropboxSaved = new DropboxSavedFile(dropboxId, creationResult.PathDisplay);
+            dropboxSaved = new DropboxSavedFile(dropboxId, dropboxUploadResult.PathDisplay);
 
             return dropboxSaved;
         }
@@ -601,6 +592,85 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
+        /// Generate a path depending on the file type
+        /// </summary>
+        /// <param name="createdAt">The file's creation date</param>
+        /// <param name="fileType">The type of File generated</param>
+        /// <returns>
+        /// Dropbox's complete path <c> ROOT_FOLDER/YEAR/UNPROCESSED/FILETYPE </c> for Invoices and Expenses and 
+        /// <c> ROOT_FOLDER/YEAR/DOSSIERS </c> for Dossier
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        private string GeneratedFolderPath(int year, FileTypes fileType)
+        {
+            if (year <= 0 || year > DateTime.Now.Year) throw new ArgumentOutOfRangeException(nameof(year));
+
+            return fileType switch
+            {
+                FileTypes.Invoices or FileTypes.Expenses =>
+                    string.Join('/', ROOT_FOLDER, year.ToString(), "UNPROCESSED", fileType.ToString().ToUpper()),
+                FileTypes.Dossiers =>
+                    string.Join('/', ROOT_FOLDER, year.ToString(), fileType.ToString().ToUpper()),
+                _ =>
+                    throw new InvalidEnumValueException(nameof(fileType)),
+            };
+        }
+
+        private string GenerateDossierFolderPath(int year, string dossierName)
+        {
+            dossierName = dossierName.Trim();
+
+            if (year <= 0 || year > DateTime.Now.Year) throw new ArgumentOutOfRangeException(nameof(year));
+            if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
+
+            return string.Join('/', ROOT_FOLDER, year.ToString(), FileTypes.Dossiers.ToString().ToUpper(), dossierName);
+        }
+
+        /// <summary>
+        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename seperated by 
+        /// <paramref name="seperator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c> 
+        /// is created, then the generated name would look like this.
+        /// <code>
+        /// 2022.10.22 1842-MyFilesName.pdf
+        /// </code>
+        /// </summary>
+        /// <param name="fileName">File's complete name. The filename must respect the Regex</param>
+        /// <param name="createdAt"></param>
+        /// <param name="seperator"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="InvalidFileNameException"></exception>
+        private string GenerateDropboxFilName(string fileName, DateTime createdAt, char seperator = '-')
+        {
+            fileName = fileName.Trim();
+
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (fileName.StringMatchFileRegEx()) throw new InvalidFileNameException(nameof(fileName));
+            if (createdAt > DateTime.Now) throw new ArgumentOutOfRangeException(nameof(DateTime));
+
+            return string.Join(seperator, createdAt.ToString("yyyy.MM.dd HHmm"), fileName);
+        }
+
+        /// <summary>
+        /// Generate a Unix file path
+        /// </summary>
+        /// <param name="destinationFolderPath">Dropbox folder's complete destination path</param>
+        /// <param name="fileName">The complete filename</param>
+        /// <returns>A Unix formatted path</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        private string GenerateFileDestinationPath(string destinationFolderPath, string fileName)
+        {
+            destinationFolderPath = destinationFolderPath.Trim();
+            fileName = fileName.Trim();
+
+            if (string.IsNullOrEmpty(destinationFolderPath)) throw new ArgumentNullException(nameof(destinationFolderPath));
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+
+            return string.Join('/', destinationFolderPath, fileName);
+        }
+
+        /// <summary>
         /// First verify Dropbox if any folder with value of <see cref="ROOT_FOLDER"/> exists. If it doesn't exist, then create the folder.
         /// </summary>
         /// <returns><c>true</c> If the folder exists or if the creation went well. <c>false</c> Otherwise</returns>
@@ -623,7 +693,7 @@ namespace DropboxSync.BLL.Services
 
                 foreach (Metadata file in listFolderResult.Entries)
                 {
-                    if (file.IsFolder && file.PathDisplay.Equals($"/{ROOT_FOLDER}"))
+                    if (file.IsFolder && file.PathDisplay.Equals(ROOT_FOLDER))
                     {
                         _logger.LogInformation("{date} | Folder {name} exist.", DateTime.Now, ROOT_FOLDER);
                         return true;
@@ -632,7 +702,7 @@ namespace DropboxSync.BLL.Services
             }
             while (listFolderResult.HasMore);
 
-            CreateFolderResult createFolderResult = await _dropboxClient.Files.CreateFolderV2Async($"/{ROOT_FOLDER}");
+            CreateFolderResult createFolderResult = await _dropboxClient.Files.CreateFolderV2Async(ROOT_FOLDER);
 
             if (createFolderResult is null)
             {
@@ -652,48 +722,54 @@ namespace DropboxSync.BLL.Services
             return isFolder;
         }
 
-        // TODO : Allow Env variable for root folder
-        private async Task<string?> CheckFolderAndCreate(string folderName)
-        {
-            if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
+        //// TODO : Allow Env variable for root folder
+        //private async Task<string?> CheckFolderAndCreate(string folderName)
+        //{
+        //    if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
 
-            //SearchV2Result fileList = await _dropboxClient.Files.SearchV2Async($"/ARTCODED");
-            ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}", recursive: true,
-                includeHasExplicitSharedMembers: true, includeMountedFolders: true);
+        //    //SearchV2Result fileList = await _dropboxClient.Files.SearchV2Async($"/ARTCODED");
+        //    ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}", recursive: true,
+        //        includeHasExplicitSharedMembers: true, includeMountedFolders: true);
 
-            if (fileList is null)
-            {
-                _logger.LogError("{date} | An error occurred when trying to list folder \"{rootF}\"", DateTime.Now, ROOT_FOLDER);
-                return null;
-            }
+        //    if (fileList is null)
+        //    {
+        //        _logger.LogError("{date} | An error occurred when trying to list folder \"{rootF}\"", DateTime.Now, ROOT_FOLDER);
+        //        return null;
+        //    }
 
-            bool firstOccurence = true;
+        //    bool firstOccurence = true;
 
-            do
-            {
-                if (!firstOccurence) fileList = await _dropboxClient.Files.ListFolderContinueAsync(fileList.Cursor);
+        //    do
+        //    {
+        //        if (!firstOccurence) fileList = await _dropboxClient.Files.ListFolderContinueAsync(fileList.Cursor);
 
-                foreach (Metadata file in fileList.Entries)
-                {
-                    if (file.IsFolder && file.PathDisplay.Equals($"/{ROOT_FOLDER}/{folderName}")) return file.AsFolder.PathLower;
-                }
+        //        foreach (Metadata file in fileList.Entries)
+        //        {
+        //            if (file.IsFolder && file.PathDisplay.Equals($"/{ROOT_FOLDER}/{folderName}")) return file.AsFolder.PathLower;
+        //        }
 
-                firstOccurence = false;
-            }
-            while (fileList.HasMore);
+        //        firstOccurence = false;
+        //    }
+        //    while (fileList.HasMore);
 
-            CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/{ROOT_FOLDER}/{folderName}");
-            return value.Metadata.PathLower;
-        }
+        //    CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/{ROOT_FOLDER}/{folderName}");
+        //    return value.Metadata.PathLower;
+        //}
 
         /// <summary>
         /// Verify if the folder at full dropbox path <paramref name="folderFullPath"/> exist in Dropbox. If <paramref name="createIfDontExist"/>
         /// is <c>true</c> then the folder is created.
         /// </summary>
-        /// <param name="folderFullPath">Dropbox's folder full path</param>
+        /// <param name="folderFullPath">
+        /// Dropbox's folder full path starting from the root. For example
+        /// <code>
+        /// ROOT_FOLDER/2022/UNPROCESSED/INVOICES
+        /// </code>
+        /// </param>
         /// <param name="createIfDontExist">If <c>true</c>, creates the folder at the researched destination</param>
         /// <returns>
-        /// <c>null</c> if listing at path <see cref="ROOT_FOLDER"/> failed or if folder isn't found and <paramref name="createIfDontExist"/> is false
+        /// <c>null</c> if listing at path <see cref="ROOT_FOLDER"/> failed or if folder isn't found and <paramref name="createIfDontExist"/> is false.
+        /// Otherwise returns the Dropbox's required folder's path.
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
         private async Task<string?> VerifyFolderExist(string folderFullPath, bool createIfDontExist = false)

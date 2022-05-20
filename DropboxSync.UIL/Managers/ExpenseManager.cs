@@ -71,8 +71,8 @@ namespace DropboxSync.UIL.Managers
                     return false;
                 }
 
-                DropboxSavedFile? dropboxSavedFile = Task.Run(async () => await _dropboxService.SaveUnprocessedFile(savedFile.FileName,
-                   DateTimeHelper.FromUnixTimestamp(model.Timestamp), savedFile.RelativePath, FileTypes.Expenses, savedFile.FileExtension)).Result;
+                DropboxSavedFile? dropboxSavedFile = Task.Run(async () => await _dropboxService.SaveUnprocessedFileAsync(savedFile.FileName,
+                   DateTimeHelper.FromUnixTimestamp(model.Timestamp), savedFile.RelativePath, FileTypes.Expenses)).Result;
 
                 if (dropboxSavedFile is null)
                 {
@@ -86,7 +86,6 @@ namespace DropboxSync.UIL.Managers
                 UploadEntity upload = new UploadEntity()
                 {
                     ContentType = savedFile.ContentType,
-                    FileExtention = savedFile.FileExtension ?? "UNKNOWN",
                     FileSize = savedFile.FileSize,
                     OriginalFileName = savedFile.FileName,
                     DropboxFileId = dropboxSavedFile.DropboxFileId,
