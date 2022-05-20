@@ -23,6 +23,7 @@ namespace DropboxSync.BLL.Configurations
 
             builder.HasOne(d => d.Upload)
                 .WithOne()
+                .OnDelete(DeleteBehavior.Cascade)
                 .IsRequired(false);
         }
     }

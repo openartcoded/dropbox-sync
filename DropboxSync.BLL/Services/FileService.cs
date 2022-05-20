@@ -115,6 +115,8 @@ namespace DropboxSync.BLL.Services
                 return finalOutput;
             }
 
+            fileName = fileName.TrimFromChar('\"');
+
             if (fileName.StringMatchFileRegEx())
             {
                 _logger.LogError("{date} | File \"{fileName}\" name contains unsupported characters defined in regex \"{regex}\"",

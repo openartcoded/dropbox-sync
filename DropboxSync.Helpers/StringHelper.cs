@@ -37,7 +37,6 @@ namespace DropboxSync.Helpers
                 if (str[i] != charToRemove) break;
 
                 str = str.Remove(i, 1);
-                i++;
             }
 
             return str;

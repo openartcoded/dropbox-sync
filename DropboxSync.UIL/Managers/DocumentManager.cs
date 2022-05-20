@@ -71,6 +71,20 @@ namespace DropboxSync.UIL.Managers
                         _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from dropbox",
                             DateTime.Now, uploadFromRepo.OriginalFileName);
                     }
+
+                    //_uploadService.Delete(uploadFromRepo);
+                    //if (!_uploadService.SaveChanges())
+                    //{
+                    //    _logger.LogError("{date} | Couldn't delete upload with ID \"{id}\" from database", DateTime.Now, uploadFromRepo.Id);
+                    //    return false;
+                    //}
+
+                    documentFromRepo.Upload = null;
+                    documentFromRepo.UploadId = null;
+
+                    _documentService.Update(documentFromRepo);
+
+                    _documentService.SaveChanges();
                 }
             }
 
@@ -102,7 +116,8 @@ namespace DropboxSync.UIL.Managers
                 contentType: localSaveResult.ContentType,
                 fileSize: localSaveResult.FileSize);
 
-
+            _uploadService.Create(upload);
+            _uploadService.SaveChanges();
 
             if (documentFromRepo is null)
             {
@@ -121,7 +136,10 @@ namespace DropboxSync.UIL.Managers
             else
             {
                 documentFromRepo.UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp);
+                documentFromRepo.UploadId = upload.Id;
                 documentFromRepo.Upload = upload;
+                documentFromRepo.Description = model.Description;
+                documentFromRepo.Title = model.Title;
 
                 _documentService.Update(documentFromRepo);
             }
