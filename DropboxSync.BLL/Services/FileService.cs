@@ -115,8 +115,12 @@ namespace DropboxSync.BLL.Services
                 return finalOutput;
             }
 
-            fileName = fileName.Replace("\"", "");
-            string fileExtension = fileName.Split('.').Last();
+            if (fileName.StringMatchFileRegEx())
+            {
+                _logger.LogError("{date} | File \"{fileName}\" name contains unsupported characters defined in regex \"{regex}\"",
+                    DateTime.Now, fileName, StringHelper.FileRegEx);
+                return finalOutput;
+            }
 
             string? contentType = response.Content.Headers?.ContentType?.MediaType;
 
@@ -139,7 +143,7 @@ namespace DropboxSync.BLL.Services
 
             long fileSize = fileInfo.Length;
 
-            finalOutput = new SavedFile(filePath, contentType, fileName, fileSize, fileExtension);
+            finalOutput = new SavedFile(filePath, contentType, fileName, fileSize);
 
             _logger.LogInformation("{date} | File saved at {filepath}", DateTime.Now, filePath);
 
