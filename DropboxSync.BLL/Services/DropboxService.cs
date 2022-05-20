@@ -379,11 +379,6 @@ namespace DropboxSync.BLL.Services
             return finalOutput;
         }
 
-        public Task<DropboxMovedFile?> UnprocessFile(string dropboxFileId, DateTime fileCreationDate, FileTypes fileType)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<bool> DeleteFile(string dropboxId)
         {
             if (string.IsNullOrEmpty(dropboxId)) throw new ArgumentNullException(nameof(dropboxId));
@@ -752,40 +747,6 @@ namespace DropboxSync.BLL.Services
             _logger.LogInformation("{date} | Folder has been created at root level in Dropbox", DateTime.Now);
             return isFolder;
         }
-
-        //// TODO : Allow Env variable for root folder
-        //private async Task<string?> CheckFolderAndCreate(string folderName)
-        //{
-        //    if (string.IsNullOrEmpty(nameof(folderName))) throw new ArgumentNullException(nameof(folderName));
-
-        //    //SearchV2Result fileList = await _dropboxClient.Files.SearchV2Async($"/ARTCODED");
-        //    ListFolderResult fileList = await _dropboxClient.Files.ListFolderAsync($"/{ROOT_FOLDER}", recursive: true,
-        //        includeHasExplicitSharedMembers: true, includeMountedFolders: true);
-
-        //    if (fileList is null)
-        //    {
-        //        _logger.LogError("{date} | An error occurred when trying to list folder \"{rootF}\"", DateTime.Now, ROOT_FOLDER);
-        //        return null;
-        //    }
-
-        //    bool firstOccurence = true;
-
-        //    do
-        //    {
-        //        if (!firstOccurence) fileList = await _dropboxClient.Files.ListFolderContinueAsync(fileList.Cursor);
-
-        //        foreach (Metadata file in fileList.Entries)
-        //        {
-        //            if (file.IsFolder && file.PathDisplay.Equals($"/{ROOT_FOLDER}/{folderName}")) return file.AsFolder.PathLower;
-        //        }
-
-        //        firstOccurence = false;
-        //    }
-        //    while (fileList.HasMore);
-
-        //    CreateFolderResult value = await _dropboxClient.Files.CreateFolderV2Async($"/{ROOT_FOLDER}/{folderName}");
-        //    return value.Metadata.PathLower;
-        //}
 
         /// <summary>
         /// Verify if the folder at full dropbox path <paramref name="folderFullPath"/> exist in Dropbox. If <paramref name="createIfDontExist"/>
