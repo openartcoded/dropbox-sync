@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DropboxSync.UIL.Models.Documents
+namespace DropboxSync.UIL.Models
 {
     public class DocumentRemoveModel : DocumentModelBase
     {

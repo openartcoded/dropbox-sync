@@ -14,6 +14,7 @@ namespace DropboxSync.BLL
         public DbSet<DossierEntity> Dossiers => Set<DossierEntity>();
         public DbSet<ExpenseEntity> Expenses => Set<ExpenseEntity>();
         public DbSet<InvoiceEntity> Invoices => Set<InvoiceEntity>();
+        public DbSet<DocumentEntity> Documents => Set<DocumentEntity>();
         public DbSet<UploadEntity> Uploads => Set<UploadEntity>();
 
         public DropboxSyncContext()
@@ -44,6 +45,7 @@ namespace DropboxSync.BLL
             modelBuilder.ApplyConfiguration(new DossierConfiguration());
             modelBuilder.ApplyConfiguration(new ExpenseConfiguration());
             modelBuilder.ApplyConfiguration(new InvoiceConfiguration());
+            modelBuilder.ApplyConfiguration(new DocumentConfiguration());
             modelBuilder.ApplyConfiguration(new UploadConfiguration());
         }
     }
