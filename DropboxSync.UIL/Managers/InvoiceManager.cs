@@ -51,16 +51,19 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            SavedFile? localSaveResult = Task.Run(async () => await _fileService.DownloadFile(model.UploadId)).Result;
+            SavedFile? localSaveResult = AsyncHelper.RunSync(() => _fileService.DownloadFile(model.UploadId));
             if (localSaveResult is null)
             {
                 _logger.LogError("{date} | Couldn't save file locally", DateTime.Now);
                 return false;
             }
 
-            DropboxSavedFile? dropboxSaveResult = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFileAsync(localSaveResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
-                    localSaveResult.RelativePath, FileTypes.Invoices)).Result;
+            DropboxSavedFile? dropboxSaveResult = AsyncHelper.RunSync(() =>
+                _dropboxService.SaveUnprocessedFileAsync(
+                    fileName: localSaveResult.FileName,
+                    createdAt: DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                    fileRelativePath: localSaveResult.RelativePath,
+                    fileType: FileTypes.Invoices));
 
             if (dropboxSaveResult is null)
             {
@@ -121,7 +124,7 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            bool dropboxDeleteResult = Task.Run(async () => await _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId)).Result;
+            bool dropboxDeleteResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
             if (!dropboxDeleteResult)
             {
                 _logger.LogError("{date} | Could not delete file with ID : \"{id}\" from Dropbox", DateTime.Now, uploadFromRepo.UploadId);
@@ -168,16 +171,19 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            SavedFile? saveLocalResult = Task.Run(async () => await _fileService.DownloadFile(model.UploadId)).Result;
+            SavedFile? saveLocalResult = AsyncHelper.RunSync(() => _fileService.DownloadFile(model.UploadId));
             if (saveLocalResult is null)
             {
                 _logger.LogError("{date} | Could not locally save upload with ID \"{id}\"", DateTime.Now, model.UploadId);
                 return false;
             }
 
-            DropboxSavedFile? dropSaveResult = Task.Run(async () =>
-                await _dropboxService.SaveUnprocessedFileAsync(saveLocalResult.FileName, DateTimeHelper.FromUnixTimestamp(model.Timestamp),
-                    saveLocalResult.RelativePath, FileTypes.Invoices)).Result;
+            DropboxSavedFile? dropSaveResult = AsyncHelper.RunSync(() =>
+                _dropboxService.SaveUnprocessedFileAsync(
+                    fileName: saveLocalResult.FileName,
+                    createdAt: DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                    fileRelativePath: saveLocalResult.RelativePath,
+                    fileType: FileTypes.Invoices));
 
             if (dropSaveResult is null)
             {

@@ -127,7 +127,7 @@ namespace DropboxSync.BLL.Services
                 return finalOutput;
             }
 
-            string filePath = Path.Combine(FILE_DOWNLOAD_DIR, string.Join('-', fileId, fileName));
+            string filePath = Path.Join(FILE_DOWNLOAD_DIR, string.Join('-', fileId, fileName));
 
             await File.WriteAllBytesAsync(filePath, fileData);
             FileInfo fileInfo = new FileInfo(filePath);
@@ -150,7 +150,7 @@ namespace DropboxSync.BLL.Services
         {
             if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
 
-            string filePath = Path.Combine(FILE_DOWNLOAD_DIR, fileName);
+            string filePath = Path.Join(FILE_DOWNLOAD_DIR, fileName);
             File.Delete(filePath);
 
             return !File.Exists(filePath);

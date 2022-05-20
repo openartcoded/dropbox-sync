@@ -81,7 +81,7 @@ namespace DropboxSync.BLL.Services
                 Environment.Exit(1);
             }
 
-            string configFilePath = Path.Combine(myDocPath, CONFIG_FILE_NAME);
+            string configFilePath = Path.Join(myDocPath, CONFIG_FILE_NAME);
 
             // Verify if file exist. If it exist, deserialized it and verify if every property contains a value. If one of them is empty,
             // application stops.
@@ -94,24 +94,7 @@ namespace DropboxSync.BLL.Services
                     throw new Exception($"The dropbox deserialized Dropbox configuration returned null");
                 }
 
-                using (Task? dropboxGettingAccessToken = Task.Run(async () => await RefreshAccessToken()))
-                {
-                    _logger.LogInformation("{date} | Refreshing access token", DateTime.Now);
-
-                    while (!dropboxGettingAccessToken.IsCompleted)
-                    {
-
-                    }
-
-                    if (dropboxGettingAccessToken.IsCompletedSuccessfully)
-                    {
-                        _logger.LogInformation("{date} | Access token retrieved successfully!", DateTime.Now);
-                    }
-                    else
-                    {
-                        throw new Exception($"An error occured while trying to retrieve de access token from Dropbox API");
-                    }
-                }
+                AsyncHelper.RunSync(RefreshAccessToken);
 
                 if (!_dropboxConfig.IsValid)
                 {
@@ -130,26 +113,7 @@ namespace DropboxSync.BLL.Services
                         $"and try again!");
                 }
 
-                using (Task<DropboxConfiguration> dropboxConfigInitialization = Task.Run(async () => await InitDropboxConfiguration()))
-                {
-                    _logger.LogInformation("{date} | Retrieving configuration.", DateTime.Now);
-
-                    while (!dropboxConfigInitialization.IsCompleted)
-                    {
-
-                    }
-
-                    if (dropboxConfigInitialization.IsCompletedSuccessfully)
-                    {
-                        _logger.LogInformation("{date} | Configuration retrieval completed.", DateTime.Now);
-                    }
-                    else if (dropboxConfigInitialization.IsFaulted)
-                    {
-                        throw new Exception($"Could not retrieve Dropbox configuration informations");
-                    }
-
-                    _dropboxConfig = dropboxConfigInitialization.Result;
-                }
+                _dropboxConfig = AsyncHelper.RunSync(InitDropboxConfiguration);
 
                 string configJson = JsonConvert.SerializeObject(_dropboxConfig);
 
@@ -161,9 +125,7 @@ namespace DropboxSync.BLL.Services
             if (!CheckDropboxClient()) throw new Exception($"An error occured during Dropbox Client checkout. Please read the precedent " +
                 $"logs to understand the error");
 
-            if (!Task.Run(async () => await VerifyRootFolder()).Result)
-                throw new Exception($"An error occured during folder checkout or creation. Please read the precedent logs to understand " +
-                    $"the error");
+            if (!AsyncHelper.RunSync(VerifyRootFolder)) throw new DropboxRootFolderMissingException(nameof(ROOT_FOLDER));
         }
 
         /// <summary>
@@ -833,7 +795,7 @@ namespace DropboxSync.BLL.Services
 
             try
             {
-                EchoResult? echoResult = Task.Run(async () => await _dropboxClient.Check.UserAsync(query)).Result;
+                EchoResult? echoResult = AsyncHelper.RunSync(() => _dropboxClient.Check.UserAsync(query));
 
                 if (echoResult is null)
                 {
@@ -846,8 +808,7 @@ namespace DropboxSync.BLL.Services
             catch (Exception e)
             {
                 _logger.LogError(e, "{date} | An exception occured during Dropbox SDK checkout.", DateTime.Now);
-                Task.Run(async () => await RefreshAccessToken()).Wait(10000);
-                return CheckDropboxClient();
+                return false;
             }
 
             _logger.LogWarning("{date} | Something wrong happened during echo check. More informations are needed", DateTime.Now);

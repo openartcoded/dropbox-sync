@@ -64,15 +64,20 @@ namespace DropboxSync.UIL.Managers
 
             foreach (string uploadId in model.UploadIds)
             {
-                SavedFile? savedFile = Task.Run(async () => await _fileService.DownloadFile(uploadId)).Result;
+                SavedFile? savedFile = AsyncHelper.RunSync(() => _fileService.DownloadFile(uploadId));
                 if (savedFile is null)
                 {
                     _logger.LogError("{date} | File with ID \"{fileId}\" couldn't be downloaded!", DateTime.Now, uploadId);
                     return false;
                 }
 
-                DropboxSavedFile? dropboxSavedFile = Task.Run(async () => await _dropboxService.SaveUnprocessedFileAsync(savedFile.FileName,
-                   DateTimeHelper.FromUnixTimestamp(model.Timestamp), savedFile.RelativePath, FileTypes.Expenses)).Result;
+                DropboxSavedFile? dropboxSavedFile = AsyncHelper.RunSync(() =>
+                    _dropboxService
+                        .SaveUnprocessedFileAsync(
+                            fileName: savedFile.FileName,
+                            createdAt: DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                            fileRelativePath: savedFile.RelativePath,
+                            fileType: FileTypes.Expenses));
 
                 if (dropboxSavedFile is null)
                 {
@@ -130,7 +135,7 @@ namespace DropboxSync.UIL.Managers
                     continue;
                 }
 
-                bool dropboxResult = Task.Run(async () => await _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId)).Result;
+                bool dropboxResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
                 if (!dropboxResult)
                 {
                     _logger.LogError("{date} | The file with ID \"{id}\"couldn't be deleted from Dropbox.", DateTime.Now, uploadId);
@@ -177,7 +182,7 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            bool dropboxResult = Task.Run(async () => await _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId)).Result;
+            bool dropboxResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
             if (!dropboxResult)
             {
                 _logger.LogError("{date} | The file with ID \"{id}\"couldn't be deleted from Dropbox.", DateTime.Now, model.UploadId);
