@@ -188,7 +188,7 @@ namespace DropboxSync.BLL.Services
                 throw new NullValueException(nameof(folderDropboxPath));
             }
 
-            string dropboxFileName = GenerateDropboxFilName(fileName, createdAt);
+            string dropboxFileName = GenerateDropboxFileName(fileName, createdAt);
 
             string dropboxDestinationPath = GenerateFileDestinationPath(requiredDropboxFolder, dropboxFileName);
 
@@ -292,7 +292,7 @@ namespace DropboxSync.BLL.Services
                 return dropboxSaved;
             }
 
-            string dropboxFileName = GenerateDropboxFilName(dossierName, createdAt);
+            string dropboxFileName = GenerateDropboxFileName(dossierName, createdAt);
             string destinationPath = GenerateFileDestinationPath(dropboxDestinationPath, dropboxFileName);
 
             FileMetadata? dropboxUploadResult = await _dropboxClient.Files.UploadAsync(new UploadArg(destinationPath),
@@ -320,7 +320,6 @@ namespace DropboxSync.BLL.Services
 
             DropboxMovedFile? finalOutput = null;
 
-            // TODO : Check if dropboxFilePath is the correct path of the file.
             Metadata? metadata = await _dropboxClient.Files.GetMetadataAsync($"id:{dropboxFileId}");
 
             if (metadata is null)
@@ -348,15 +347,13 @@ namespace DropboxSync.BLL.Services
 
             if (isProcess)
             {
-                newPath = $"/{ROOT_FOLDER}" +
-                    $"/{fileCreationDate.Year}" +
-                    $"/{FileTypes.Dossiers.ToString().ToUpper()}" +
-                    $"/{dossierName}" +
-                    $"/{movingFilesType.ToString().ToUpper()}";
+                if (string.IsNullOrEmpty(dossierName)) throw new NullValueException(nameof(dossierName));
+
+                newPath = GenerateDossierFolderPath(fileCreationDate.Year, dossierName, movingFilesType);
             }
             else
             {
-                newPath = $"/{ROOT_FOLDER}/{fileCreationDate.Year}/UNPROCESSED/{movingFilesType.ToString().ToUpper()}";
+                newPath = GeneratedFolderPath(fileCreationDate.Year, movingFilesType);
             }
 
             string? verifiedPath = await VerifyFolderExist(newPath, true);
@@ -364,17 +361,17 @@ namespace DropboxSync.BLL.Services
             if (string.IsNullOrEmpty(verifiedPath))
             {
                 _logger.LogError("{date} | No folder exist at path \"{path}\" and it couldn't be created!", DateTime.Now, newPath);
-                return null;
+                throw new NullValueException(nameof(verifiedPath));
             }
 
-            string toPath = $"{verifiedPath}/{metadata.Name}";
+            string toPath = GenerateFileDestinationPath(verifiedPath, metadata.Name);
 
             relocationResult = await _dropboxClient.Files.MoveV2Async(dropboxFilePath, toPath, allowSharedFolder: true, allowOwnershipTransfer: true);
 
             if (relocationResult is null)
             {
                 _logger.LogError("{date} | The relocation failed, returning a \"null\"", DateTime.Now);
-                return null;
+                throw new NullValueException(nameof(relocationResult));
             }
 
             finalOutput = new DropboxMovedFile(dropboxFilePath, toPath);
@@ -616,6 +613,14 @@ namespace DropboxSync.BLL.Services
             };
         }
 
+        /// <summary>
+        /// Generate the path to a dossier in Dropbox
+        /// </summary>
+        /// <param name="year">Dossier creation year</param>
+        /// <param name="dossierName">Dossier name</param>
+        /// <returns>Dropbox absolute path to the folder</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
         private string GenerateDossierFolderPath(int year, string dossierName)
         {
             dossierName = dossierName.Trim();
@@ -624,6 +629,32 @@ namespace DropboxSync.BLL.Services
             if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
 
             return string.Join('/', ROOT_FOLDER, year.ToString(), FileTypes.Dossiers.ToString().ToUpper(), dossierName);
+        }
+
+        /// <summary>
+        /// Generate the path to a dossier's invoice or expense folder in Dropbox
+        /// </summary>
+        /// <param name="year">File creation year</param>
+        /// <param name="dossierName">Dossier name</param>
+        /// <param name="fileType">File type</param>
+        /// <returns>Dropbox's absolute path to the <paramref name="fileType"/> folder in dossier named <paramref name="dossierName"/></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidEnumValueException"></exception>
+        private string GenerateDossierFolderPath(int year, string dossierName, FileTypes fileType)
+        {
+            dossierName = dossierName.Trim();
+
+            if (year <= 0 | year > DateTime.Now.Year) throw new ArgumentOutOfRangeException(nameof(year));
+            if (string.IsNullOrEmpty(dossierName)) throw new ArgumentNullException(nameof(dossierName));
+            if (fileType == FileTypes.Dossiers) throw new InvalidEnumValueException(nameof(FileTypes));
+
+            return string.Join('/',
+                ROOT_FOLDER,
+                year.ToString(),
+                FileTypes.Dossiers.ToString().ToUpper(),
+                dossierName,
+                fileType.ToString().ToUpper());
         }
 
         /// <summary>
@@ -641,7 +672,7 @@ namespace DropboxSync.BLL.Services
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="InvalidFileNameException"></exception>
-        private string GenerateDropboxFilName(string fileName, DateTime createdAt, char seperator = '-')
+        private string GenerateDropboxFileName(string fileName, DateTime createdAt, char seperator = '-')
         {
             fileName = fileName.Trim();
 

@@ -107,7 +107,7 @@ namespace DropboxSync.UIL.Managers
             DossierEntity dossierToCreate = _mapper.Map<DossierEntity>(model);
 
             bool dropboxResult = Task.Run(async () =>
-                await _dropboxService.CreateDossierAsync(dossierToCreate.Name, dossierToCreate.CreatedAt, BLL.FileTypes.Dossiers)).Result;
+                await _dropboxService.CreateDossierAsync(dossierToCreate.Name, dossierToCreate.CreatedAt)).Result;
 
             if (!dropboxResult)
             {
