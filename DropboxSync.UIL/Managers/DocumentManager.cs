@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using DropboxSync.BLL;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
 using DropboxSync.Helpers;
@@ -47,17 +48,27 @@ namespace DropboxSync.UIL.Managers
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
 
-            DocumentEntity? documentFromRepo = _documentService.GetById(Guid.Parse(model.DocumentId));
+            UploadEntity? uploadFromRepo = _uploadService.GetDocumentRelatedUpload(Guid.Parse(model.DocumentId));
 
-            if (documentFromRepo is null)
+            if (uploadFromRepo is not null)
             {
-                documentFromRepo = new DocumentEntity()
+                bool deletionResult = _fileService.Delete(uploadFromRepo.OriginalFileName);
+
+                if (!deletionResult)
                 {
-                    Description = model.Description,
-                    Title = model.Title,
-                    Id = Guid.NewGuid()
-                };
+                    _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from local backup",
+                        DateTime.Now, uploadFromRepo.OriginalFileName);
+                }
+
+                bool dropboxDeletionResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
+
+                if (!dropboxDeletionResult)
+                {
+                    _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from dropbox",
+                        DateTime.Now, uploadFromRepo.OriginalFileName);
+                }
             }
+
 
             SavedFile? localSaveResult = AsyncHelper.RunSync(() => _fileService.DownloadFile(model.UploadId));
 
@@ -67,11 +78,115 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
+            DropboxSavedFile? dropboxResult = AsyncHelper.RunSync(() =>
+                _dropboxService.SaveUnprocessedFileAsync(localSaveResult.FileName, DateTime.Now, localSaveResult.RelativePath, FileTypes.Documents));
+
+            if (dropboxResult is null)
+            {
+                _logger.LogError("{date} | Couldn't save file with ID \"{id}\" in Dropbox", DateTime.Now, model.UploadId);
+                return false;
+            }
+
+            UploadEntity upload = new UploadEntity(
+                uploadId: model.UploadId,
+                originalFileName: localSaveResult.FileName,
+                dropboxFileId: dropboxResult.DropboxFileId,
+                contentType: localSaveResult.ContentType,
+                fileSize: localSaveResult.FileSize);
+
+
+            DocumentEntity? documentFromRepo = _documentService.GetById(Guid.Parse(model.DocumentId));
+
+            if (documentFromRepo is null)
+            {
+                documentFromRepo = new DocumentEntity()
+                {
+                    CreatedAt = DateTime.Now,
+                    Description = model.Description,
+                    Title = model.Title,
+                    Id = Guid.NewGuid()
+                };
+
+                _documentService.Create(documentFromRepo);
+            }
+            else
+            {
+                documentFromRepo.UpdatedAt = DateTime.Now;
+                documentFromRepo.Upload = upload;
+
+                _documentService.Update(documentFromRepo);
+            }
+
+            if (!_documentService.SaveChanges())
+            {
+                _logger.LogError("{date} | Document and upload haven't been saved to the database!", DateTime.Now);
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Document with ID \"{docId}\" with upload with ID \"{upId}\" have been successfully saved.",
+                DateTime.Now, documentFromRepo.Id, upload.Id);
+
+            return true;
         }
 
         public bool Delete(DocumentRemoveModel model)
         {
-            throw new NotImplementedException();
+            if (model is null) throw new ArgumentNullException(nameof(model));
+
+            DocumentEntity? documentFromRepo = _documentService.GetById(Guid.Parse(model.DocumentId));
+
+            if (documentFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no Document in database with ID \"{id}\"", DateTime.Now, model.DocumentId);
+                return false;
+            }
+
+            UploadEntity? uploadFromRepo = _uploadService.GetDocumentRelatedUpload(Guid.Parse(model.DocumentId));
+
+            if (uploadFromRepo is null)
+            {
+                _logger.LogError("{date} | There is no upload in database associated to document with ID \"{id}\"",
+                    DateTime.Now, documentFromRepo.Id);
+
+                return true;
+            }
+
+            bool deletionResult = _fileService.Delete(uploadFromRepo.OriginalFileName);
+
+            if (!deletionResult)
+            {
+                _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from local backup",
+                    DateTime.Now, uploadFromRepo.OriginalFileName);
+            }
+
+            _logger.LogInformation("{date} | Successfully deleted local file with name \"{name}\"",
+                DateTime.Now, uploadFromRepo.OriginalFileName);
+
+            bool dropboxDeletionResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
+
+            if (!dropboxDeletionResult)
+            {
+                _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from dropbox",
+                    DateTime.Now, uploadFromRepo.OriginalFileName);
+            }
+
+            _logger.LogInformation("{date} | Successfully deleted file from Dropbox with Dropbox ID \"{id}\"",
+                DateTime.Now, uploadFromRepo.DropboxFileId);
+
+            _documentService.Delete(documentFromRepo);
+
+            if (!_documentService.SaveChanges())
+            {
+                _logger.LogError("{date} | Changes to Document with ID \"{id}\" haven't been saved to the database",
+                    DateTime.Now, documentFromRepo.Id);
+
+                return false;
+            }
+
+            _logger.LogInformation("{date} | Successfully deleted Document with ID \"{id}\" from database.",
+                DateTime.Now, documentFromRepo.Id);
+
+            return true;
         }
 
         public bool Delete<T>(T model) where T : EventModel

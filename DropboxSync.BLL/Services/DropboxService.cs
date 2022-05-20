@@ -563,6 +563,8 @@ namespace DropboxSync.BLL.Services
             {
                 FileTypes.Invoices or FileTypes.Expenses =>
                     string.Join('/', ROOT_FOLDER, year.ToString(), "UNPROCESSED", fileType.ToString().ToUpper()),
+                FileTypes.Documents => 
+                    string.Join('/', ROOT_FOLDER, year.ToString(), fileType.ToString().ToUpper()),
                 FileTypes.Dossiers =>
                     string.Join('/', ROOT_FOLDER, year.ToString(), fileType.ToString().ToUpper()),
                 _ =>

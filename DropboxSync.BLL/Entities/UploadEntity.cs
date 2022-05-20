@@ -35,6 +35,8 @@ namespace DropboxSync.BLL.Entities
             DropboxFileId = dropboxFileId;
             ContentType = contentType;
             FileSize = fileSize;
+
+            Id = Guid.NewGuid();
         }
     }
 }

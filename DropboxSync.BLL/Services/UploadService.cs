@@ -1,5 +1,6 @@
 ﻿using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
+using DropboxSync.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -84,6 +85,20 @@ namespace DropboxSync.BLL.Services
             if (entity is null) throw new ArgumentNullException(nameof(entity));
 
             _context.Uploads.Update(entity);
+        }
+
+        public UploadEntity? GetDocumentRelatedUpload(Guid documentId)
+        {
+            if (documentId == Guid.Empty) throw new ArgumentException(nameof(documentId));
+
+            DocumentEntity? documentFromRepo = _context.Documents.Find(documentId);
+
+            if (documentFromRepo is null)
+            {
+                throw new NullValueException(nameof(documentFromRepo));
+            }
+
+            return _context.Uploads.SingleOrDefault(u => u.Id == documentFromRepo.UploadId);
         }
     }
 }

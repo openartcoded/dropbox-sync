@@ -10,6 +10,7 @@ namespace DropboxSync.BLL
     {
         Invoices,
         Expenses,
-        Dossiers
+        Dossiers,
+        Documents
     }
 }
