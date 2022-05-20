@@ -48,27 +48,31 @@ namespace DropboxSync.UIL.Managers
         {
             if (model is null) throw new ArgumentNullException(nameof(model));
 
-            UploadEntity? uploadFromRepo = _uploadService.GetDocumentRelatedUpload(Guid.Parse(model.DocumentId));
+            DocumentEntity? documentFromRepo = _documentService.GetById(Guid.Parse(model.DocumentId));
 
-            if (uploadFromRepo is not null)
+            if (documentFromRepo is not null)
             {
-                bool deletionResult = _fileService.Delete(uploadFromRepo.OriginalFileName);
+                UploadEntity? uploadFromRepo = _uploadService.GetDocumentRelatedUpload(Guid.Parse(model.DocumentId));
 
-                if (!deletionResult)
+                if (uploadFromRepo is not null)
                 {
-                    _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from local backup",
-                        DateTime.Now, uploadFromRepo.OriginalFileName);
-                }
+                    bool deletionResult = _fileService.Delete(uploadFromRepo.OriginalFileName);
 
-                bool dropboxDeletionResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
+                    if (!deletionResult)
+                    {
+                        _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from local backup",
+                            DateTime.Now, uploadFromRepo.OriginalFileName);
+                    }
 
-                if (!dropboxDeletionResult)
-                {
-                    _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from dropbox",
-                        DateTime.Now, uploadFromRepo.OriginalFileName);
+                    bool dropboxDeletionResult = AsyncHelper.RunSync(() => _dropboxService.DeleteFile(uploadFromRepo.DropboxFileId));
+
+                    if (!dropboxDeletionResult)
+                    {
+                        _logger.LogWarning("{date} | Couldn't delete file \"{name}\" from dropbox",
+                            DateTime.Now, uploadFromRepo.OriginalFileName);
+                    }
                 }
             }
-
 
             SavedFile? localSaveResult = AsyncHelper.RunSync(() => _fileService.DownloadFile(model.UploadId));
 
@@ -79,7 +83,11 @@ namespace DropboxSync.UIL.Managers
             }
 
             DropboxSavedFile? dropboxResult = AsyncHelper.RunSync(() =>
-                _dropboxService.SaveUnprocessedFileAsync(localSaveResult.FileName, DateTime.Now, localSaveResult.RelativePath, FileTypes.Documents));
+                _dropboxService.SaveUnprocessedFileAsync(
+                    fileName: localSaveResult.FileName,
+                    createdAt: DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                    fileRelativePath: localSaveResult.RelativePath,
+                    fileType: FileTypes.Documents));
 
             if (dropboxResult is null)
             {
@@ -95,23 +103,24 @@ namespace DropboxSync.UIL.Managers
                 fileSize: localSaveResult.FileSize);
 
 
-            DocumentEntity? documentFromRepo = _documentService.GetById(Guid.Parse(model.DocumentId));
 
             if (documentFromRepo is null)
             {
                 documentFromRepo = new DocumentEntity()
                 {
-                    CreatedAt = DateTime.Now,
+                    Upload = upload,
+                    CreatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp),
+                    UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp),
                     Description = model.Description,
                     Title = model.Title,
-                    Id = Guid.NewGuid()
+                    Id = Guid.Parse(model.DocumentId)
                 };
 
                 _documentService.Create(documentFromRepo);
             }
             else
             {
-                documentFromRepo.UpdatedAt = DateTime.Now;
+                documentFromRepo.UpdatedAt = DateTimeHelper.FromUnixTimestamp(model.Timestamp);
                 documentFromRepo.Upload = upload;
 
                 _documentService.Update(documentFromRepo);

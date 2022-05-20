@@ -19,6 +19,7 @@ namespace DropboxSync.BLL
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddScoped<IDossierService, DossierService>();
             services.AddScoped<IUploadService, UploadService>();
+            services.AddScoped<IDocumentService, DocumentService>();
 
             services.AddScoped<IFileService, FileService>();
             services.AddScoped<IDropboxService, DropboxService>();

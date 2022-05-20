@@ -33,6 +33,7 @@ var host = new HostBuilder()
         services.AddTransient<IExpenseManager, ExpenseManager>();
         services.AddTransient<IInvoiceManager, InvoiceManager>();
         services.AddTransient<IDossierManager, DossierManager>();
+        services.AddTransient<IDocumentManager, DocumentManager>();
         services.AddSingleton<BrokerEventListener>();
     })
     .UseConsoleLifetime()

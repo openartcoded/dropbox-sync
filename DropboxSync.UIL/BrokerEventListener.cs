@@ -25,13 +25,13 @@ namespace DropboxSync.UIL
         private readonly IExpenseManager _expenseManager;
         private readonly IInvoiceManager _invoiceManager;
         private readonly IDossierManager _dossierManager;
-
         private readonly IDropboxService _dropboxService;
+        private readonly IDocumentManager _documentManager;
 
         public Connection? AmqpConnection { get; private set; }
 
         public BrokerEventListener(ILogger<BrokerEventListener> logger, IExpenseManager expenseManager,
-            IInvoiceManager invoiceManager, IDossierManager dossierManager, IDropboxService dropboxService)
+            IInvoiceManager invoiceManager, IDossierManager dossierManager, IDropboxService dropboxService, IDocumentManager documentManager)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -45,6 +45,8 @@ namespace DropboxSync.UIL
                 ?? throw new ArgumentNullException(nameof(dossierManager));
             _dropboxService = dropboxService ??
                 throw new ArgumentNullException(nameof(dropboxService));
+            _documentManager = documentManager ??
+                throw new ArgumentNullException(nameof(documentManager));
         }
 
         public void Initialize()
@@ -327,6 +329,32 @@ namespace DropboxSync.UIL
 
                     return _dossierManager.Recall(dossierRecallForModification);
 
+
+                case BrokerEvent.AdministrativeDocumentAddedOrUpdated:
+
+                    DocumentCreateUpdateModel? documentCreateUpdate = JsonConvert.DeserializeObject<DocumentCreateUpdateModel>(jsonObj);
+
+                    if (documentCreateUpdate is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DocumentCreateUpdateModel));
+                        return false;
+                    }
+
+                    return _documentManager.CreateUpdate(documentCreateUpdate);
+
+                case BrokerEvent.AdministrativeDocumentRemoved:
+
+                    DocumentRemoveModel? documentRemove = JsonConvert.DeserializeObject<DocumentRemoveModel>(jsonObj);
+
+                    if (documentRemove is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DocumentRemoveModel));
+                        return false;
+                    }
+
+                    return _documentManager.Delete(documentRemove);
                 default:
                     _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);
                     return false;

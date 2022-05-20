@@ -24,6 +24,8 @@ namespace DropboxSync.UIL.Enums
         DossierClosed,
         DossierDeleted,
         DossierUpdated,
-        DossierRecallForModification
+        DossierRecallForModification,
+        AdministrativeDocumentAddedOrUpdated,
+        AdministrativeDocumentRemoved,
     }
 }
