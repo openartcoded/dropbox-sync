@@ -59,5 +59,22 @@ namespace DropboxSync.Helpers
 
             return regex.IsMatch(str);
         }
+
+        public static int KeepOnlyDigits(string message)
+        {
+            if (string.IsNullOrEmpty(message)) throw new ArgumentNullException(nameof(message));
+
+            string final = "";
+
+            for (int i = 0; i < message.Length; i++)
+            {
+                if (char.IsDigit(message[i])) final += message[i];
+            }
+
+            if (!int.TryParse(final, out int finalNb))
+                throw new Exception($"{nameof(final)} with value : \\{final}\\ could not be formatted to int");
+
+            return finalNb;
+        }
     }
 }
