@@ -15,8 +15,26 @@ namespace DropboxSync.BLL.Entities
         public string ContentType { get; set; } = string.Empty;
         public long FileSize { get; set; }
 
-        // Relations
-
         public ICollection<ExpenseEntity>? Expenses { get; set; }
+
+        public UploadEntity()
+        {
+
+        }
+
+        public UploadEntity(string uploadId, string originalFileName, string dropboxFileId, string contentType, long fileSize)
+        {
+            if (string.IsNullOrEmpty(uploadId)) throw new ArgumentNullException(nameof(uploadId));
+            if (string.IsNullOrEmpty(originalFileName)) throw new ArgumentNullException(nameof(originalFileName));
+            if (string.IsNullOrEmpty(dropboxFileId)) throw new ArgumentNullException(nameof(dropboxFileId));
+            if (string.IsNullOrEmpty(contentType)) throw new ArgumentNullException(nameof(contentType));
+            if (fileSize < 0) throw new ArgumentOutOfRangeException(nameof(fileSize));
+
+            UploadId = uploadId;
+            OriginalFileName = originalFileName;
+            DropboxFileId = dropboxFileId;
+            ContentType = contentType;
+            FileSize = fileSize;
+        }
     }
 }
