@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Managers
 {
-    public interface IInvoiceManager : IEventManager<InvoiceModelBase>
+    public interface IInvoiceManager : IEventManager
     {
-
+        new bool Create<T>(T entity) where T : InvoiceGeneratedModel;
+        new bool Delete<T>(T entity) where T : InvoiceRemovedModel;
+        bool Restore(InvoiceRestoredModel model);
     }
 }

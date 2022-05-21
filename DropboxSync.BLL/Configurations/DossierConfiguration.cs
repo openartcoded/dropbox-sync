@@ -20,7 +20,7 @@ namespace DropboxSync.BLL.Configurations
                 .HasMaxLength(255);
 
             builder.Property(d => d.Description)
-                .IsRequired()
+                .IsRequired(false)
                 .HasMaxLength(1000);
 
             builder.Property(d => d.DueVat)

@@ -14,6 +14,7 @@ namespace DropboxSync.BLL
         public DbSet<DossierEntity> Dossiers => Set<DossierEntity>();
         public DbSet<ExpenseEntity> Expenses => Set<ExpenseEntity>();
         public DbSet<InvoiceEntity> Invoices => Set<InvoiceEntity>();
+        public DbSet<DocumentEntity> Documents => Set<DocumentEntity>();
         public DbSet<UploadEntity> Uploads => Set<UploadEntity>();
 
         public DropboxSyncContext()
@@ -23,9 +24,15 @@ namespace DropboxSync.BLL
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            string databaseFileName = Environment.GetEnvironmentVariable("DATABASE_FILE_NAME") ?? "DropboxSyncDatabase.db";
+            string dbName = Environment.GetEnvironmentVariable("DROPBOX_DATABASE_NAME") ??
+                "DropboxSyncDatabase";
 
-            optionsBuilder.UseSqlite($"Filename={databaseFileName}", options =>
+            string appPath = Environment.GetEnvironmentVariable("DROPBOX_APPDATA_PATH") ??
+                throw new NullReferenceException($"Environnement variable DROPBOX_APPDATA_PATH couldn't be retrieved!");
+
+            string dbPath = Path.Join(appPath, dbName);
+
+            optionsBuilder.UseSqlite($"Data Source={dbPath}", options =>
             {
                 // Add options
             });
@@ -38,6 +45,7 @@ namespace DropboxSync.BLL
             modelBuilder.ApplyConfiguration(new DossierConfiguration());
             modelBuilder.ApplyConfiguration(new ExpenseConfiguration());
             modelBuilder.ApplyConfiguration(new InvoiceConfiguration());
+            modelBuilder.ApplyConfiguration(new DocumentConfiguration());
             modelBuilder.ApplyConfiguration(new UploadConfiguration());
         }
     }

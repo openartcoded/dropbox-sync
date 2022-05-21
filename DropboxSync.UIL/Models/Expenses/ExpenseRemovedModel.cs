@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class ExpenseRemovedModel : ExpenseModelBase
+    public class ExpenseRemovedModel : ExpenseModelBase
     {
         public string[] UploadIds { get; set; } = new string[0];
     }

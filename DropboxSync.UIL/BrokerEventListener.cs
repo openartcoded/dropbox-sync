@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Amqp;
+using DropboxSync.BLL.IServices;
+using DropboxSync.Helpers;
 using DropboxSync.UIL.Enums;
-using DropboxSync.UIL.Helpers;
 using DropboxSync.UIL.Managers;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
@@ -24,10 +25,13 @@ namespace DropboxSync.UIL
         private readonly IExpenseManager _expenseManager;
         private readonly IInvoiceManager _invoiceManager;
         private readonly IDossierManager _dossierManager;
+        private readonly IDropboxService _dropboxService;
+        private readonly IDocumentManager _documentManager;
+
         public Connection? AmqpConnection { get; private set; }
 
         public BrokerEventListener(ILogger<BrokerEventListener> logger, IExpenseManager expenseManager,
-            IInvoiceManager invoiceManager, IDossierManager dossierManager)
+            IInvoiceManager invoiceManager, IDossierManager dossierManager, IDropboxService dropboxService, IDocumentManager documentManager)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -39,6 +43,10 @@ namespace DropboxSync.UIL
                 throw new ArgumentNullException(nameof(invoiceManager));
             _dossierManager = dossierManager
                 ?? throw new ArgumentNullException(nameof(dossierManager));
+            _dropboxService = dropboxService ??
+                throw new ArgumentNullException(nameof(dropboxService));
+            _documentManager = documentManager ??
+                throw new ArgumentNullException(nameof(documentManager));
         }
 
         public void Initialize()
@@ -66,6 +74,8 @@ namespace DropboxSync.UIL
 
             ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
             receiverLink.Start(200, Message_Received);
+
+            _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
         }
 
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
@@ -82,8 +92,17 @@ namespace DropboxSync.UIL
             EventModel eventModel = JsonConvert.DeserializeObject<EventModel>(textMessage) ??
                 throw new NullReferenceException(nameof(EventModel));
 
-            BrokerEvent brokerEvent = (BrokerEvent)Enum.Parse(typeof(BrokerEvent), eventModel.EventName);
-            _logger.LogInformation("Event \"{brokerEvent}\" received", brokerEvent);
+
+            Enum.TryParse(typeof(BrokerEvent), eventModel.EventName, out object? eventObj);
+
+            if (eventObj is null)
+            {
+                _logger.LogError("{date} | The received event couldn't be treated by the app", DateTime.Now);
+                return;
+            }
+
+            BrokerEvent brokerEvent = (BrokerEvent)eventObj;
+            _logger.LogInformation("{date} | Event \"{brokerEvent}\" received", DateTime.Now, brokerEvent);
 
             int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);
 
@@ -95,6 +114,7 @@ namespace DropboxSync.UIL
             else
             {
                 EventRedirection(brokerEvent, textMessage);
+                _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
             }
         }
 
@@ -106,25 +126,235 @@ namespace DropboxSync.UIL
             {
                 // Redirect all expense events with _expenseManager.Redirect()
                 case BrokerEvent.ExpenseReceived:
+                    ExpenseReceivedModel? expense = JsonConvert.DeserializeObject<ExpenseReceivedModel>(jsonObj);
+                    if (expense is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}", DateTime.Now, typeof(ExpenseReceivedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.Create(expense);
+
                 case BrokerEvent.ExpenseLabelUpdated:
+
+                    ExpenseLabelUpdatedModel? expenseLabelUpdated = JsonConvert.DeserializeObject<ExpenseLabelUpdatedModel>(jsonObj);
+                    if (expenseLabelUpdated is null)
+                    {
+                        _logger.LogError("{date} | JSON couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(ExpenseLabelUpdatedModel));
+
+                        return false;
+                    }
+
+                    return _expenseManager.UpdateLabel(expenseLabelUpdated);
+
                 case BrokerEvent.ExpensePriceUpdated:
+
+                    ExpensePriceUpdatedModel? expensePriceUpdated = JsonConvert.DeserializeObject<ExpensePriceUpdatedModel>(jsonObj);
+                    if (expensePriceUpdated is null)
+                    {
+                        _logger.LogError("{date} | JSON couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(ExpensePriceUpdatedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.UpdatePrice(expensePriceUpdated);
+
                 case BrokerEvent.ExpenseRemoved:
+
+                    ExpenseRemovedModel? expenseRemoved = JsonConvert.DeserializeObject<ExpenseRemovedModel>(jsonObj);
+                    if (expenseRemoved is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}"
+                            , DateTime.Now, typeof(ExpenseRemovedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.Delete(expenseRemoved);
+
                 case BrokerEvent.ExpenseAttachmentRemoved:
-                case BrokerEvent.ExpenseAddedToDossier:
-                case BrokerEvent.ExpenseRemovedFromDossier: return _expenseManager.Redirect(jsonObj);
-                // Redirect all Invoice events with _invoiceManager.Redirect()
+
+                    ExpenseAttachmentRemovedModel? expenseAttachmentRemoved = JsonConvert.DeserializeObject<ExpenseAttachmentRemovedModel>(jsonObj);
+                    if (expenseAttachmentRemoved is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(ExpenseAttachmentRemovedModel));
+                        return false;
+                    }
+
+                    return _expenseManager.RemoveExpenseAttachment(expenseAttachmentRemoved);
+
+                case BrokerEvent.ExpensesAddedToDossier:
+
+                    DossierExpensesAddedModel? expensesAddedModel = JsonConvert.DeserializeObject<DossierExpensesAddedModel>(jsonObj);
+                    if (expensesAddedModel is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(DossierExpensesAddedModel));
+                        return false;
+                    }
+
+                    return _dossierManager.AddExpense(expensesAddedModel);
+
+                case BrokerEvent.ExpenseRemovedFromDossier:
+
+                    DossierExpenseRemovedModel? dossierExpenseRemoved = JsonConvert.DeserializeObject<DossierExpenseRemovedModel>(jsonObj);
+                    if (dossierExpenseRemoved is null)
+                    {
+                        _logger.LogError("{date} | Json couldn't be deserialized to type {type}",
+                            DateTime.Now, typeof(DossierExpenseRemovedModel));
+                        return false;
+                    }
+
+                    return _dossierManager.RemoveExpense(dossierExpenseRemoved);
+
                 case BrokerEvent.InvoiceGenerated:
+
+                    InvoiceGeneratedModel? invoiceGenerated = JsonConvert.DeserializeObject<InvoiceGeneratedModel>(jsonObj);
+                    if (invoiceGenerated is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null!",
+                            DateTime.Now, typeof(InvoiceGeneratedModel));
+                        return false;
+                    }
+
+                    return _invoiceManager.Create(invoiceGenerated);
+
                 case BrokerEvent.InvoiceRemoved:
+
+                    InvoiceRemovedModel? invoiceRemoved = JsonConvert.DeserializeObject<InvoiceRemovedModel>(jsonObj);
+                    if (invoiceRemoved is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(InvoiceRemovedModel));
+                        return false;
+                    }
+
+                    return _invoiceManager.Delete(invoiceRemoved);
+
                 case BrokerEvent.InvoiceRestored:
+
+                    InvoiceRestoredModel? invoiceRestored = JsonConvert.DeserializeObject<InvoiceRestoredModel>(jsonObj);
+
+                    if (invoiceRestored is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(InvoiceRestoredModel));
+                        return false;
+                    }
+
+                    return _invoiceManager.Restore(invoiceRestored);
+
                 case BrokerEvent.InvoiceRemovedFromDossier:
-                case BrokerEvent.InvoiceAddedToDossier: return _invoiceManager.Redirect(jsonObj);
-                // Redirect all dossier events with _dossierManager.Redirect()
+
+                    DossierInvoiceRemovedModel? dossierInvoiceRemoved = JsonConvert.DeserializeObject<DossierInvoiceRemovedModel>(jsonObj);
+
+                    if (dossierInvoiceRemoved is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DossierInvoiceRemovedModel));
+
+                        return false;
+                    }
+
+                    return _dossierManager.RemoveInvoice(dossierInvoiceRemoved);
+
+                case BrokerEvent.InvoiceAddedToDossier:
+
+                    DossierInvoiceAddedModel? dossierInvoiceAdded = JsonConvert.DeserializeObject<DossierInvoiceAddedModel>(jsonObj);
+
+                    if (dossierInvoiceAdded is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DossierInvoiceAddedModel));
+
+                        return false;
+                    }
+
+                    return _dossierManager.AddInvoice(dossierInvoiceAdded);
+
                 case BrokerEvent.DossierCreated:
+
+                    DossierCreateModel? dossierCreate = JsonConvert.DeserializeObject<DossierCreateModel>(jsonObj);
+                    if (dossierCreate is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierCreateModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Create(dossierCreate);
+
                 case BrokerEvent.DossierClosed:
+
+                    DossierCloseModel? dossierClose = JsonConvert.DeserializeObject<DossierCloseModel>(jsonObj);
+                    if (dossierClose is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierCloseModel));
+                        return false;
+                    }
+
+                    return _dossierManager.CloseDossier(dossierClose);
+
                 case BrokerEvent.DossierDeleted:
+
+                    DossierDeleteModel? dossierDelete = JsonConvert.DeserializeObject<DossierDeleteModel>(jsonObj);
+                    if (dossierDelete is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierDeleteModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Delete(dossierDelete);
+
                 case BrokerEvent.DossierUpdated:
-                case BrokerEvent.DossierRecallForModification: return _dossierManager.Redirect(jsonObj);
-                // Send a message to the log and return false
+
+                    DossierUpdateModel? dossierUpdate = JsonConvert.DeserializeObject<DossierUpdateModel>(jsonObj);
+                    if (dossierUpdate is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null", DateTime.Now, typeof(DossierUpdateModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Update(dossierUpdate);
+
+                case BrokerEvent.DossierRecallForModification:
+
+                    DossierRecallForModificationModel? dossierRecallForModification =
+                        JsonConvert.DeserializeObject<DossierRecallForModificationModel>(jsonObj);
+
+                    if (dossierRecallForModification is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DossierRecallForModificationModel));
+                        return false;
+                    }
+
+                    return _dossierManager.Recall(dossierRecallForModification);
+
+
+                case BrokerEvent.AdministrativeDocumentAddedOrUpdated:
+
+                    DocumentCreateUpdateModel? documentCreateUpdate = JsonConvert.DeserializeObject<DocumentCreateUpdateModel>(jsonObj);
+
+                    if (documentCreateUpdate is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DocumentCreateUpdateModel));
+                        return false;
+                    }
+
+                    return _documentManager.CreateUpdate(documentCreateUpdate);
+
+                case BrokerEvent.AdministrativeDocumentRemoved:
+
+                    DocumentRemoveModel? documentRemove = JsonConvert.DeserializeObject<DocumentRemoveModel>(jsonObj);
+
+                    if (documentRemove is null)
+                    {
+                        _logger.LogError("{date} | The deserialized object of type {type} is null",
+                            DateTime.Now, typeof(DocumentRemoveModel));
+                        return false;
+                    }
+
+                    return _documentManager.Delete(documentRemove);
                 default:
                     _logger.LogError("Event category couldn't be defined! RECEIVED EVENT : \"{brokerEvent}\"", brokerEvent);
                     return false;

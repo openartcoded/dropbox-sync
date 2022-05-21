@@ -1,4 +1,7 @@
-﻿using System;
+﻿using DropboxSync.BLL.IServices;
+using DropboxSync.BLL.Services;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,9 +11,21 @@ namespace DropboxSync.BLL
 {
     public static class Configuration
     {
-        public static void Config()
+        public static IServiceCollection ConfigureBusinessLayer(this IServiceCollection services)
         {
-            // Configure injections of Automapper, EFCore, Broker client
+            services.AddScoped<DropboxSyncContext>();
+
+            services.AddScoped<IExpenseService, ExpenseService>();
+            services.AddScoped<IInvoiceService, InvoiceService>();
+            services.AddScoped<IDossierService, DossierService>();
+            services.AddScoped<IUploadService, UploadService>();
+            services.AddScoped<IDocumentService, DocumentService>();
+
+            services.AddScoped<IFileService, FileService>();
+            services.AddScoped<IDropboxService, DropboxService>();
+            // Configure injections of Automapper
+
+            return services;
         }
     }
 }

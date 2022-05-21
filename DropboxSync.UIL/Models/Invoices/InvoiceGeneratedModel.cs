@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class InvoiceGeneratedModel : InvoiceModelBase
+    public class InvoiceGeneratedModel : InvoiceModelBase
     {
         public bool ManualUpload { get; set; }
         public decimal SubTotal { get; set; }

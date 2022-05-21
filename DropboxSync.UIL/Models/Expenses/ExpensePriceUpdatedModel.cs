@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DropboxSync.UIL.Models
 {
-    internal class ExpensePriceUpdatedModel : ExpenseModelBase
+    public class ExpensePriceUpdatedModel : ExpenseModelBase
     {
         public decimal PriceHvat { get; set; }
         public decimal Vat { get; set; }
