@@ -5,9 +5,9 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["DropboxSync.UIL/DropboxSync.UIL.csproj", "DropboxSync.UIL/"]
-COPY ["DropboxSync.BLL/DropboxSync.BLL.csproj", "DropboxSync.BLL/"]
-COPY ["DropboxSync.Helpers/DropboxSync.Helpers.csproj", "DropboxSync.Helpers/"]
+COPY ./DropboxSync.UIL/DropboxSync.UIL.csproj DropboxSync.UIL/
+COPY ./DropboxSync.BLL/DropboxSync.BLL.csproj DropboxSync.BLL/
+COPY ./DropboxSync.Helpers/DropboxSync.Helpers.csproj DropboxSync.Helpers/
 RUN dotnet restore "DropboxSync.UIL/DropboxSync.UIL.csproj"
 COPY . .
 WORKDIR "/src/DropboxSync.UIL"

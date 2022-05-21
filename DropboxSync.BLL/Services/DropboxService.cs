@@ -69,12 +69,9 @@ namespace DropboxSync.BLL.Services
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
 
-            // Vérifier si le fichier de configuration exist
-            // S'il n'existe pas, vérifier si le CODE est en variable d'environnement
-            // Tenter de récupérer le Refresh token et les autres informations
-            // Si ça ne marche pas, quitter l'application
+            string myDocPath = Environment.GetEnvironmentVariable("DROPBOX_CONFIG_PATH") ??
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.None);
 
-            string myDocPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.None);
             if (string.IsNullOrEmpty(myDocPath))
             {
                 _logger.LogError("{date} | Could not retrieve path of \"My Documents\" for Windows and \"\\\" for Linux", DateTime.Now);
@@ -563,7 +560,7 @@ namespace DropboxSync.BLL.Services
             {
                 FileTypes.Invoices or FileTypes.Expenses =>
                     string.Join('/', ROOT_FOLDER, year.ToString(), "UNPROCESSED", fileType.ToString().ToUpper()),
-                FileTypes.Documents => 
+                FileTypes.Documents =>
                     string.Join('/', ROOT_FOLDER, year.ToString(), fileType.ToString().ToUpper()),
                 FileTypes.Dossiers =>
                     string.Join('/', ROOT_FOLDER, year.ToString(), fileType.ToString().ToUpper()),
