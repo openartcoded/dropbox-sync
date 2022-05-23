@@ -2,10 +2,14 @@
 
 ## Informations
 
+* Langage : C#
+* SDK : .NET 6
 
+## Installation
 
+### Dropbox Configuration
 
-## How to install
+Before touching the app, you will need to create an application in Dropbox and retrieve some informations. Go on Dropbox Dev
 
 ```yaml
 version: '3.4'
