@@ -87,9 +87,9 @@ services:
         DROPBOX_API_SECRET: # Replace this value with your API Secret
         DROPBOX_CODE: # Replace this value with the code received by Dropbox PgYD8ACqPWcAAAAAAAAATtMVR0SsNdK5hp1f-GHBl7M
         DROPBOX_CONFIG_PATH: # Choose a path for the config file like this "/app/config". DON'T FORGET THE CHANGE THE VOLUME'S NAME TOO
-        API_BACKEND_URL: # http://api-backend
-        API_BACKEND_ID: # service-account-download
-        API_CLIENT_SECRET: # duzp0kzwDHSS2nSO46P3GBGsNnQbx5L3
+        API_BACKEND_URL: # Set your API Backend URL
+        API_BACKEND_ID: # Set your API's Backend ID
+        API_CLIENT_SECRET: # Replace withj you
         API_TOKEN_URL: # http://keycloak:8080/realms/Artcoded/protocol/openid-connect/token
         FILE_DOWNLOAD_DIR: # /data
         DROPBOX_DATABASE_NAME: # DropboxSyncDatabase
