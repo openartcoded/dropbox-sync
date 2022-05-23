@@ -7,7 +7,7 @@ version: '3.4'
 
 services:
   dropboxsync:
-    build: C:\Users\soult\Desktop\Github\Artcoded\dropbox-sync\.
+    image: nbittich/dropbox-sync
     restart: always
     depends_on:
       - artemis
