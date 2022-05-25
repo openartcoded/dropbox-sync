@@ -32,11 +32,17 @@ namespace DropboxSync.BLL
                 "DropboxSyncDatabase";
 
             string appPath = Environment.GetEnvironmentVariable("DROPBOX_APPDATA_PATH") ??
-                throw new NullReferenceException($"Environnement variable DROPBOX_APPDATA_PATH couldn't be retrieved!");
+                "/db";
+                //throw new NullReferenceException($"Environnement variable DROPBOX_APPDATA_PATH couldn't be retrieved!");
 
             string dbPath = Path.Join(appPath, dbName);
+            string fullPath = Path.GetFullPath(dbPath);
+            _logger.LogInformation("{date} | Database saved at path \"{path}\"", DateTime.Now, fullPath);
 
-            _logger.LogInformation("{date} | Database saved at path \"{path}\"", DateTime.Now, dbPath);
+            if (!Directory.Exists(appPath))
+            {
+                Directory.CreateDirectory(appPath);
+            }
 
             optionsBuilder.UseSqlite($"Data Source={dbPath}", options =>
             {
