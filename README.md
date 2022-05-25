@@ -60,7 +60,7 @@ We can leave the rest for the moment, they are not important in our case.
 
 ### Docker configuration
 
-Now you need to modify some things. Your `docker-compose.yml` file should look like this :
+Now you need to modify some things. Your `docker-compose.yml` and add the following service, it should look like this :
 
 Configure every variable with your value. 
 
@@ -78,6 +78,7 @@ services:
     networks:
         - artcoded
     environment:
+        # Use your AMQP credentials and channel
         AMQP_USERNAME: # root
         AMQP_PASSWORD: # root
         AMQP_HOST: # artemis
@@ -85,19 +86,32 @@ services:
         AMQP_QUEUE: # backend-event
         DROPBOX_API_KEY: # Replace this value with your API KEY
         DROPBOX_API_SECRET: # Replace this value with your API Secret
-        DROPBOX_CODE: # Replace this value with the code received by Dropbox PgYD8ACqPWcAAAAAAAAATtMVR0SsNdK5hp1f-GHBl7M
+        DROPBOX_CODE: # Replace this value with the code received by Dropbox. For example: PgYD8ACqPWcAAAAAAAAATtMVR0SsNdK5hp1f-GHBl7M
         DROPBOX_CONFIG_PATH: # Choose a path for the config file like this "/app/config". DON'T FORGET THE CHANGE THE VOLUME'S NAME TOO
-        API_BACKEND_URL: # Set your API Backend URL
-        API_BACKEND_ID: # Set your API's Backend ID
-        API_CLIENT_SECRET: # Replace withj you
-        API_TOKEN_URL: # http://keycloak:8080/realms/Artcoded/protocol/openid-connect/token
-        FILE_DOWNLOAD_DIR: # /data
-        DROPBOX_DATABASE_NAME: # DropboxSyncDatabase
-        DROPBOX_APPDATA_PATH: # /db
-        DROPBOX_CONFIG_FILE_NAME: # 
-        DROPBOX_ROOT_FOLDER: #
+        API_BACKEND_URL: # Set your API Backend URL. Example : "http://api-backend"
+        API_BACKEND_ID: # Set your API's Backend ID. Example : "service-account-download"
+        API_CLIENT_SECRET: # Replace with your API Client's secret key. Example : "duzp0kzwDHSS2nSO46P3GBSsNnQbx8L3"
+        API_TOKEN_URL: # Replace it with the keycloak's token url. Example : "http://keycloak:8080/realms/Artcoded/protocol/openid-connect/token"
+        FILE_DOWNLOAD_DIR: # THE PATH MUST START WITH "/": Example "/data"
+        DROPBOX_DATABASE_NAME: # Should a name for the SQLite db file. Example : "DropboxSyncDatabase"
+        DROPBOX_APPDATA_PATH: # THE PATH MUST START WITH "/". Example : "/db"
+        DROPBOX_CONFIG_FILE_NAME: # Choose a file name for the config file. By default it is going to be "dropbox-sync-configuration.json"
+        DROPBOX_ROOT_FOLDER: # THE PATH MUST START WITH "/". Example : "/OPENARTCODED"
     volumes:
+        # The mapped volumes for data et db must be the same as DROPBOX_CONFIG_PATH and FILE_DOWNLOAD_DIR and DROPBOX_APPDATA_PATH 
         - ./config/dropbox-sync:/app/config
         - ./data/dropbox-data:/data
         - ./data/dropbox-db:/db
 ```
+
+## Startup
+
+Once every precedent steps are done, you will just need to do one more thing before starting the app.
+
+Follow the next link (don't forget to change de [API_KEY] text with your Dropbox's app API Key). 
+
+`https://www.dropbox.com/oauth2/authorize?client_id=[API_KEY]&response_type=code&token_access_type=offline`
+
+Retrieve the code given by Dropbox and change the `DROPBOX_CODE` environment variable in `docker-compose`.
+
+Now you can start the service.
