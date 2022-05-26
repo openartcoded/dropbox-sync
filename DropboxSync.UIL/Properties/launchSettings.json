@@ -2,9 +2,6 @@
   "profiles": {
     "DropboxSync.UIL": {
       "commandName": "Project"
-    },
-    "Docker": {
-      "commandName": "Docker"
     }
   }
 }

@@ -69,7 +69,7 @@ version: '3.4'
 
 services:
   dropboxsync:
-    build: nbittich/dropbox-sync
+    image: nbittich/dropbox-sync
     restart: always
     depends_on:
       - artemis
