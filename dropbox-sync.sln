@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "20 BLL", "20 BLL", "{751512
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "30 UIL", "30 UIL", "{E5E07674-12A2-4270-A5D8-AA4317C1A612}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DropboxSync.Helpers", "DropboxSync.Helpers\DropboxSync.Helpers.csproj", "{F226F92C-41A6-4CC0-9DEC-748DCBBE9A26}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DropboxSync.Helpers", "DropboxSync.Helpers\DropboxSync.Helpers.csproj", "{F226F92C-41A6-4CC0-9DEC-748DCBBE9A26}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
