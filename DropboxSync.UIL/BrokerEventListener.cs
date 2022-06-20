@@ -62,18 +62,18 @@ namespace DropboxSync.UIL
                 host, port);
 
             Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
-            
+
             try
             {
                 AmqpConnection = new Connection(address);
                 _logger.LogInformation("AMQP Connection established!");
                 AmqpConnection.Closed += Connection_Closed;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 ConnectionAttempts++;
 
-                _logger.LogError("{date} | Attempt {attempt} An error occured while trying to create connection : {ex}", 
+                _logger.LogError("{date} | Attempt {attempt} An error occured while trying to create connection : {ex}",
                     DateTime.Now, ConnectionAttempts, e.Message);
                 _logger.LogInformation("{date} | Trying to reconnect in 5 secondes", DateTime.Now);
                 Thread.Sleep(5000);
@@ -91,12 +91,13 @@ namespace DropboxSync.UIL
                 ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
                 receiverLink.Start(200, Message_Received);
                 _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
+                ConnectionAttempts = 0;
             }
-            catch(AmqpException e)
+            catch (AmqpException e)
             {
                 _logger.LogError("{date} | Couldn't create AMQP Session : {ex}", DateTime.Now, e.Message);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 _logger.LogError("{date} | An error occured while trying to create a session to the broker : {ex}",
                     DateTime.Now, e.Message);
@@ -107,7 +108,7 @@ namespace DropboxSync.UIL
         {
             _logger.LogCritical("Connection to the broker closed!");
 
-            if(ConnectionAttempts < 5)
+            if (ConnectionAttempts < 5)
             {
                 _logger.LogCritical("{date} | Reconnection attempt {attempt}", DateTime.Now, ConnectionAttempts);
                 Initialize();
