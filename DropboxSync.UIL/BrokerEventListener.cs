@@ -71,7 +71,10 @@ namespace DropboxSync.UIL
             }
             catch(Exception e)
             {
-                _logger.LogError("{date} | An error occured while trying to create connection : {ex}", DateTime.Now, e.Message);
+                ConnectionAttempts++;
+
+                _logger.LogError("{date} | Attempt {attempt} An error occured while trying to create connection : {ex}", 
+                    DateTime.Now, ConnectionAttempts, e.Message);
                 _logger.LogInformation("{date} | Trying to reconnect in 5 secondes", DateTime.Now);
                 Thread.Sleep(5000);
                 Initialize();
@@ -91,14 +94,7 @@ namespace DropboxSync.UIL
             }
             catch(AmqpException e)
             {
-                ConnectionAttempts++;
-                _logger.LogError("{date} | Attempt {attempt} : Couldn't create session to AMQP : {ex}",
-                    DateTime.Now, ConnectionAttempts,  e.Message);
-
-                Thread.Sleep(5000);
-
-                Initialize();
-                Start();
+                _logger.LogError("{date} | Couldn't create AMQP Session : {ex}", DateTime.Now, e.Message);
             }
             catch(Exception e)
             {
@@ -113,9 +109,8 @@ namespace DropboxSync.UIL
 
             if(ConnectionAttempts < 5)
             {
-                ConnectionAttempts++;
-                Thread.Sleep(5000);
                 _logger.LogCritical("{date} | Reconnection attempt {attempt}", DateTime.Now, ConnectionAttempts);
+                Initialize();
                 Start();
             }
             else
