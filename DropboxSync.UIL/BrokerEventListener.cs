@@ -20,6 +20,8 @@ namespace DropboxSync.UIL
     {
         public const int SUPPORT_EVENT_VERSION = 1;
 
+        public int ConnectionAttempts { get; set; } = 0;
+
         private readonly ILogger _logger;
         private readonly AmqpCredentialModel _amqpCredentials;
         private readonly IExpenseManager _expenseManager;
@@ -60,27 +62,59 @@ namespace DropboxSync.UIL
                 host, port);
 
             Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
-            AmqpConnection = new Connection(address);
 
-            _logger.LogInformation("AMQP Connection established!");
-            AmqpConnection.Closed += Connection_Closed;
+            try
+            {
+                AmqpConnection = new Connection(address);
+                _logger.LogInformation("AMQP Connection established!");
+                AmqpConnection.Closed += Connection_Closed;
+            }
+            catch (Exception e)
+            {
+                ConnectionAttempts++;
+
+                _logger.LogError("{date} | Attempt {attempt} An error occured while trying to create connection : {ex}",
+                    DateTime.Now, ConnectionAttempts, e.Message);
+                _logger.LogInformation("{date} | Trying to reconnect in 5 secondes", DateTime.Now);
+                Thread.Sleep(5000);
+                Initialize();
+            }
         }
 
         public void Start()
         {
             if (AmqpConnection is null) throw new NullReferenceException(nameof(AmqpConnection));
 
-            Session session = new Session(AmqpConnection);
-
-            ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
-            receiverLink.Start(200, Message_Received);
-
-            _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
+            try
+            {
+                Session session = new Session(AmqpConnection);
+                ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
+                receiverLink.Start(200, Message_Received);
+                _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
+                ConnectionAttempts = 0;
+            }
+            catch (AmqpException e)
+            {
+                _logger.LogError("{date} | Couldn't create AMQP Session : {ex}", DateTime.Now, e.Message);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("{date} | An error occured while trying to create a session to the broker : {ex}",
+                    DateTime.Now, e.Message);
+            }
         }
 
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
         {
             _logger.LogCritical("Connection to the broker closed!");
+
+            _logger.LogCritical("{date} | Reconnection attempt {attempt}", DateTime.Now, ConnectionAttempts);
+            Initialize();
+            Start();
+
+            _logger.LogCritical("{date} | After 5 attempts of connection, the broker couldn't be reached!",
+                DateTime.Now);
+
         }
 
         private void Message_Received(IReceiverLink receiver, Message message)

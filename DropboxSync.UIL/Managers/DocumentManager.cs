@@ -72,13 +72,6 @@ namespace DropboxSync.UIL.Managers
                             DateTime.Now, uploadFromRepo.OriginalFileName);
                     }
 
-                    //_uploadService.Delete(uploadFromRepo);
-                    //if (!_uploadService.SaveChanges())
-                    //{
-                    //    _logger.LogError("{date} | Couldn't delete upload with ID \"{id}\" from database", DateTime.Now, uploadFromRepo.Id);
-                    //    return false;
-                    //}
-
                     documentFromRepo.Upload = null;
                     documentFromRepo.UploadId = null;
 
