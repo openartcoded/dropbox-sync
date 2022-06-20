@@ -108,17 +108,13 @@ namespace DropboxSync.UIL
         {
             _logger.LogCritical("Connection to the broker closed!");
 
-            if (ConnectionAttempts < 5)
-            {
-                _logger.LogCritical("{date} | Reconnection attempt {attempt}", DateTime.Now, ConnectionAttempts);
-                Initialize();
-                Start();
-            }
-            else
-            {
-                _logger.LogCritical("{date} | After 5 attempts of connection, the broker couldn't be reached!",
-                    DateTime.Now);
-            }
+            _logger.LogCritical("{date} | Reconnection attempt {attempt}", DateTime.Now, ConnectionAttempts);
+            Initialize();
+            Start();
+
+            _logger.LogCritical("{date} | After 5 attempts of connection, the broker couldn't be reached!",
+                DateTime.Now);
+
         }
 
         private void Message_Received(IReceiverLink receiver, Message message)
