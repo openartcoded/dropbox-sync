@@ -113,8 +113,15 @@ namespace DropboxSync.UIL
             }
             else
             {
-                EventRedirection(brokerEvent, textMessage);
-                _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
+                if (EventRedirection(brokerEvent, textMessage))
+                {
+                    _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
+                }
+                else
+                {
+                    _logger.LogError("{date} | Event \"{event}\" couldn't be treated!", DateTime.Now, brokerEvent);
+                    // TODO : Add the logic for DLQ
+                }
             }
         }
 
