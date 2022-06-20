@@ -98,7 +98,7 @@ namespace DropboxSync.UIL
             }
             catch(Exception e)
             {
-                _logger.LogError("{date} | An error occured while trying to create a session to the broker!",
+                _logger.LogError("{date} | An error occured while trying to create a session to the broker : {ex}",
                     DateTime.Now, e.Message);
             }
         }
