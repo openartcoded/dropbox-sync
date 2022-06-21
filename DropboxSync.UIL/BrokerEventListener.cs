@@ -156,8 +156,10 @@ namespace DropboxSync.UIL
                 {
                     // When a message is unsuccessfully treated, it is sent to the DLQ
                     _logger.LogError("{date} | Event \"{event}\" couldn't be treated!", DateTime.Now, brokerEvent);
+                    // If object from event doesn't exist, resend a creation event
+                    // If something else happened, send to DLQ
+                    // If delete event failed, do nothing
                     receiver.Reject(message);
-                    // TODO : Add the logic for DLQ
                 }
             }
         }
