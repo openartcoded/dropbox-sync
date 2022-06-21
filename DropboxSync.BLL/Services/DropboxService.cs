@@ -251,7 +251,7 @@ namespace DropboxSync.BLL.Services
                 return dropboxSaved;
             }
 
-            string dropboxFileName = GenerateDropboxFileName(dossierName, createdAt);
+            string dropboxFileName = GenerateDropboxFileName(fileName, createdAt);
             string destinationPath = GenerateFileDestinationPath(dropboxDestinationPath, dropboxFileName);
 
             FileMetadata? dropboxUploadResult = await _dropboxClient.Files.UploadAsync(new UploadArg(destinationPath),
