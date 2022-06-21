@@ -126,7 +126,6 @@ namespace DropboxSync.UIL
             EventModel eventModel = JsonConvert.DeserializeObject<EventModel>(textMessage) ??
                 throw new NullReferenceException(nameof(EventModel));
 
-
             Enum.TryParse(typeof(BrokerEvent), eventModel.EventName, out object? eventObj);
 
             if (eventObj is null)
@@ -149,16 +148,26 @@ namespace DropboxSync.UIL
             {
                 if (EventRedirection(brokerEvent, textMessage))
                 {
+                    // When a message is successfully treated, a ACK is sent to notify the broker
                     _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
+                    receiver.Accept(message);
                 }
                 else
                 {
+                    // When a message is unsuccessfully treated, it is sent to the DLQ
                     _logger.LogError("{date} | Event \"{event}\" couldn't be treated!", DateTime.Now, brokerEvent);
+                    receiver.Reject(message);
                     // TODO : Add the logic for DLQ
                 }
             }
         }
 
+        /// <summary>
+        /// Redirect to the right event manager and the right method
+        /// </summary>
+        /// <param name="brokerEvent">The basic Broker Event object representing the event type</param>
+        /// <param name="jsonObj">The complete JSon message with all event fields</param>
+        /// <returns><c>true</c> if the event was successful. <c>false</c> Otherwise.</returns>
         private bool EventRedirection(BrokerEvent brokerEvent, string jsonObj)
         {
             if (jsonObj is null) throw new ArgumentNullException(nameof(jsonObj));
