@@ -15,31 +15,29 @@ namespace DropboxSync.Helpers
                 throw new NullValueException("There is no value in environment variable named MAIL_RECEIVER_ADDRESS!");
 
             string senderEmail = Environment.GetEnvironmentVariable("MAIL_SENDER_EMAIL") ??
-                throw new NullValueException("There is no value in environment variable named MAIL_SENDER_EMAIL!");
-
+                "noreply@somehost.com";
             string senderPassword = Environment.GetEnvironmentVariable("MAIL_SENDER_PASSWORD") ??
-                throw new NullValueException("There is no value for environment variable named MAIL_SENDER_PASSWORD!");
-
+                "noreply";
             string host = Environment.GetEnvironmentVariable("MAIL_SENDER_SERVER") ??
-                throw new NullValueException("There is no value in environment variable named MAIL_SENDER_SERVER!");
+                "greenmail.somehost.org";
 
             if (!int.TryParse(Environment.GetEnvironmentVariable("MAIL_SENDER_PORT"), out int port))
-                throw new FormatException("MAIL_SENDER_PORT couldn't be parsed to an int value!");
+                port = 25;
 
             if (!bool.TryParse(Environment.GetEnvironmentVariable("MAIL_SENDER_SSL_ENABLE"), out bool enableSsl))
-                throw new FormatException("MAIL_SENDER_SSL_ENABLE couldn't be parsed to bool value!");
+                enableSsl = true;
 
             MailMessage message = new MailMessage(senderEmail, receiverEmail);
             message.Subject = "Dropbox Synchronisation : Connection to the backoffice broker lost";
-            message.Body =
-            @"The connection to the backoffice's broker is lost. Events wont be proceeded, please wait until the service 
-            reconnect to the broker.
-            
-            Thank you";
+            message.Body = @"The connection to the backoffice's broker is lost. Events wont be proceeded, please wait until the service 
+            reconnect to the broker.";
 
-            SmtpClient client = new SmtpClient(host, port);
-            client.EnableSsl = enableSsl;
-            client.Credentials = new NetworkCredential(senderEmail, senderPassword);
+            SmtpClient client = new SmtpClient(host, port)
+            {
+                EnableSsl = true,
+                UseDefaultCredentials = false,
+                Credentials = new NetworkCredential(senderEmail, senderPassword)
+            };
 
             try
             {
@@ -48,6 +46,8 @@ namespace DropboxSync.Helpers
             }
             catch (Exception ex)
             {
+                System.Console.WriteLine(ex.Message);
+                System.Console.WriteLine(ex.InnerException?.Message);
                 return false;
             }
         }

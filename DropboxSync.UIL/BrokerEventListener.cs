@@ -126,6 +126,7 @@ namespace DropboxSync.UIL
                     _logger.LogError("{date} | Connection to the broker failed : {ex} : {iex}",
                         DateTime.Now, e.Message, e.InnerException?.Message);
                 }
+                Thread.Sleep(5000);
             }
 
             _logger.LogInformation("{date} | Connection restablished!", DateTime.Now);
