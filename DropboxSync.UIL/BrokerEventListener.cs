@@ -71,13 +71,7 @@ namespace DropboxSync.UIL
             }
             catch (Exception e)
             {
-                ConnectionAttempts++;
-
-                _logger.LogError("{date} | Attempt {attempt} An error occured while trying to create connection : {ex}",
-                    DateTime.Now, ConnectionAttempts, e.Message);
-                _logger.LogInformation("{date} | Trying to reconnect in 5 secondes", DateTime.Now);
-                Thread.Sleep(5000);
-                Initialize();
+                _logger.LogError("{date} | Couldn't establish connection with the broker!", DateTime.Now);
             }
         }
 
@@ -91,7 +85,6 @@ namespace DropboxSync.UIL
                 ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
                 receiverLink.Start(200, Message_Received);
                 _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
-                ConnectionAttempts = 0;
             }
             catch (AmqpException e)
             {
@@ -104,17 +97,47 @@ namespace DropboxSync.UIL
             }
         }
 
+        private void Reconnection()
+        {
+            if (AmqpConnection is null) throw new NullReferenceException(nameof(AmqpConnection));
+
+            string username = _amqpCredentials.AmqpUsername;
+            string password = _amqpCredentials.AmqpPassword;
+            string host = _amqpCredentials.AmqpHost;
+            int port = _amqpCredentials.AmqpPort;
+
+            _logger.LogInformation("Attempt to reconnect to the broker");
+
+
+            while (AmqpConnection.IsClosed)
+            {
+                Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
+
+                try
+                {
+                    AmqpConnection = new Connection(address);
+                    AmqpConnection.Closed += Connection_Closed;
+                    Session session = new Session(AmqpConnection);
+                    ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
+                    receiverLink.Start(200, Message_Received);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError("{date} | Connection to the broker failed : {ex} : {iex}",
+                        DateTime.Now, e.Message, e.InnerException?.Message);
+                }
+            }
+
+            _logger.LogInformation("{date} | Connection restablished!", DateTime.Now);
+        }
+
         private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
         {
             _logger.LogCritical("Connection to the broker closed!");
 
-            _logger.LogCritical("{date} | Reconnection attempt {attempt}", DateTime.Now, ConnectionAttempts);
-            Initialize();
-            Start();
+            MailHelper.SendBrokerConnectionLostEmail();
 
-            _logger.LogCritical("{date} | After 5 attempts of connection, the broker couldn't be reached!",
-                DateTime.Now);
-
+            Reconnection();
         }
 
         private void Message_Received(IReceiverLink receiver, Message message)
