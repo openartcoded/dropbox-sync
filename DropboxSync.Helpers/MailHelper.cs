@@ -12,14 +12,16 @@ namespace DropboxSync.Helpers
         public static bool SendBrokerConnectionLostEmail()
         {
             string receiverEmail = Environment.GetEnvironmentVariable("MAIL_RECEIVER_ADDRESS") ??
-                throw new NullValueException("There is no value in environment variable named MAIL_RECEIVER_ADDRESS!");
+                "fee@somehost.com";
 
             string senderEmail = Environment.GetEnvironmentVariable("MAIL_SENDER_EMAIL") ??
                 "noreply@somehost.com";
+
             string senderPassword = Environment.GetEnvironmentVariable("MAIL_SENDER_PASSWORD") ??
                 "noreply";
+
             string host = Environment.GetEnvironmentVariable("MAIL_SENDER_SERVER") ??
-                "greenmail.somehost.org";
+                "mail.somehost.org";
 
             if (!int.TryParse(Environment.GetEnvironmentVariable("MAIL_SENDER_PORT"), out int port))
                 port = 25;
@@ -34,7 +36,7 @@ namespace DropboxSync.Helpers
 
             SmtpClient client = new SmtpClient(host, port)
             {
-                EnableSsl = true,
+                EnableSsl = enableSsl,
                 UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(senderEmail, senderPassword)
             };

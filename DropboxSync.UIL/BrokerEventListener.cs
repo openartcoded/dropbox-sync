@@ -71,7 +71,8 @@ namespace DropboxSync.UIL
             }
             catch (Exception e)
             {
-                _logger.LogError("{date} | Couldn't establish connection with the broker!", DateTime.Now);
+                _logger.LogError("{date} | Couldn't establish connection with the broker! {ex}",
+                    DateTime.Now, e.Message);
             }
         }
 
