@@ -47,7 +47,7 @@ namespace DropboxSync.BLL.Services
             "dropbox-sync-configuration.json";
 
         /// <summary>
-        /// Retrieves the declared root folder in Dropbox. If the environnement variable is null then the next folder is used 
+        /// Retrieves the declared root folder in Dropbox. If the environnement variable is null then the next folder is used
         /// <code>/OPENARTCODED</code>
         /// Be aware that the folder name must ALWAYS start with <c>/</c>
         /// </summary>
@@ -191,7 +191,7 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
-        /// 
+        /// Delete dossier from Dropbox
         /// </summary>
         /// <param name="dossierName"></param>
         /// <param name="createdAt"></param>
