@@ -1,18 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using Amqp;
+using Amqp.Framing;
+using Amqp.Types;
 using DropboxSync.BLL.IServices;
 using DropboxSync.Helpers;
 using DropboxSync.UIL.Enums;
+using DropboxSync.UIL.Iterators;
 using DropboxSync.UIL.Managers;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace DropboxSync.UIL
 {
@@ -30,6 +27,11 @@ namespace DropboxSync.UIL
         private readonly IDropboxService _dropboxService;
         private readonly IDocumentManager _documentManager;
 
+        private ISession? _session;
+
+        public Task? ReceiverTask { get; set; }
+
+        public CancellationTokenSource? ReceiverTaskCancellationTokenSource { get; set; }
         public Connection? AmqpConnection { get; private set; }
 
         public BrokerEventListener(ILogger<BrokerEventListener> logger, IExpenseManager expenseManager,
@@ -82,9 +84,16 @@ namespace DropboxSync.UIL
 
             try
             {
-                Session session = new Session(AmqpConnection);
-                ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
-                receiverLink.Start(200, Message_Received);
+                _session = ((IConnection)AmqpConnection).CreateSession();
+                ReceiverLink receiverLink = new ReceiverLink(_session as Session, "", _amqpCredentials.AmqpQueue);
+
+                ReceiverTaskCancellationTokenSource = new CancellationTokenSource();
+                CancellationToken token = ReceiverTaskCancellationTokenSource.Token;
+
+                Task.Factory.StartNew(
+                    () => ReceiveMessage(receiverLink, token), token);
+
+                // receiverLink.Start(200, Message_Received);
                 _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
             }
             catch (AmqpException e)
@@ -95,6 +104,60 @@ namespace DropboxSync.UIL
             {
                 _logger.LogError("{date} | An error occured while trying to create a session to the broker : {ex}",
                     DateTime.Now, e.Message);
+            }
+        }
+
+        private void ReceiveMessage(ReceiverLink receiver, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogError("{date} | Message receiving task was cancelled before it started!", DateTime.Now);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                Message message = receiver.Receive();
+
+                string textMessage = Encoding.UTF8.GetString((byte[])message.Body);
+
+                if (string.IsNullOrEmpty(textMessage)) throw new NullReferenceException(nameof(textMessage));
+
+                EventModel eventModel = JsonConvert.DeserializeObject<EventModel>(textMessage) ??
+                    throw new NullReferenceException(nameof(EventModel));
+
+                Enum.TryParse(typeof(BrokerEvent), eventModel.EventName, out object? eventObj);
+
+                if (eventObj is null)
+                {
+                    _logger.LogError("{date} | The received event couldn't be treated by the app", DateTime.Now);
+                    return;
+                }
+
+                BrokerEvent brokerEvent = (BrokerEvent)eventObj;
+                _logger.LogInformation("{date} | Event \"{brokerEvent}\" received", DateTime.Now, brokerEvent);
+
+                int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);
+
+                if (eventVersion != SUPPORT_EVENT_VERSION)
+                {
+                    _logger.LogWarning("The event \"{eventName}\" with version \"{eventVersion}\" is not supported by " +
+                        "this app (supported version: {supportedVersion})", eventModel.EventName, eventVersion, SUPPORT_EVENT_VERSION);
+                }
+                else
+                {
+                    if (EventRedirection(brokerEvent, textMessage))
+                    {
+                        // When a message is successfully treated, a ACK is sent to notify the broker
+                        _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
+                    }
+                    else
+                    {
+                        SendToFailedQueue(textMessage, brokerEvent);
+                    }
+
+                    receiver.Accept(message);
+                }
             }
         }
 
@@ -118,9 +181,15 @@ namespace DropboxSync.UIL
                 {
                     AmqpConnection = new Connection(address);
                     AmqpConnection.Closed += Connection_Closed;
-                    Session session = new Session(AmqpConnection);
-                    ReceiverLink receiverLink = new ReceiverLink(session, "", _amqpCredentials.AmqpQueue);
-                    receiverLink.Start(200, Message_Received);
+                    _session = ((IConnection)AmqpConnection).CreateSession();
+                    ReceiverLink receiverLink = new ReceiverLink(_session as Session, "", _amqpCredentials.AmqpQueue);
+                    // receiverLink.Start(200, Message_Received);
+
+                    ReceiverTaskCancellationTokenSource = new CancellationTokenSource();
+                    CancellationToken token = ReceiverTaskCancellationTokenSource.Token;
+
+                    Task.Factory.StartNew(
+                        () => ReceiveMessage(receiverLink, token), token);
                 }
                 catch (Exception e)
                 {
@@ -138,6 +207,9 @@ namespace DropboxSync.UIL
             _logger.LogCritical("Connection to the broker closed!");
 
             MailHelper.SendBrokerConnectionLostEmail();
+
+            if (ReceiverTaskCancellationTokenSource is not null)
+                ReceiverTaskCancellationTokenSource.Cancel();
 
             Reconnection();
         }
@@ -175,20 +247,49 @@ namespace DropboxSync.UIL
                 {
                     // When a message is successfully treated, a ACK is sent to notify the broker
                     _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
-                    receiver.Accept(message);
                 }
                 else
                 {
-                    // When a message is unsuccessfully treated, it is sent to the DLQ
-                    _logger.LogError("{date} | Event \"{event}\" couldn't be treated!", DateTime.Now, brokerEvent);
 
-                    // TODO : If an event has failed, sent to list with a number of try (1 minimum and 5 maximum)
-                    // TODO : If event fail reached 5 attempt, send to the DLQ
-
-                    // string.Equals()
-                    receiver.Reject(message);
+                    SendToFailedQueue(textMessage, brokerEvent);
                 }
+
+                // receiver.Accept(message);
             }
+        }
+
+        private void SendToFailedQueue(string textMessage, BrokerEvent brokerEvent)
+        {
+            // When a message is unsuccessfully treated, it is sent to the DLQ
+            _logger.LogError("{date} | Event \"{event}\" couldn't be treated!", DateTime.Now, brokerEvent);
+
+            // TODO : If event is failed, send it to dropbox-sync-failed
+
+            if (_session is null) throw new NullReferenceException(nameof(_session));
+
+            ISenderLink sender = _session.CreateSender("sender" + Guid.NewGuid(), new Target
+            {
+                Address = "dropbox-sync-failed",
+                Capabilities = new[]
+                {
+                            new Symbol("queue")
+                        },
+                Durable = 1
+            });
+
+            FailedEventModel failedEvent = new FailedEventModel(0, textMessage);
+
+            Message msg = new Message()
+            {
+                BodySection = new Data
+                {
+                    Binary = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(failedEvent))
+                }
+            };
+
+            _logger.LogWarning("{date} | Sending msg to dropbox-sync-failed queue", DateTime.Now);
+
+            sender.Send(msg);
         }
 
         /// <summary>
