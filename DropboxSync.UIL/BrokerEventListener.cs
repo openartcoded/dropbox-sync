@@ -5,7 +5,6 @@ using Amqp.Types;
 using DropboxSync.BLL.IServices;
 using DropboxSync.Helpers;
 using DropboxSync.UIL.Enums;
-using DropboxSync.UIL.Iterators;
 using DropboxSync.UIL.Managers;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
