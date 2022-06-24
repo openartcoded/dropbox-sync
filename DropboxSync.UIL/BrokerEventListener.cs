@@ -154,6 +154,8 @@ namespace DropboxSync.UIL
 
                     Task.Factory.StartNew(
                         () => ReceiveMessage(receiverLink, token), token);
+
+                    Task.Factory.StartNew(async () => await FailedQueueMonitoringAsync());
                 }
                 catch (Exception e)
                 {
@@ -247,7 +249,7 @@ namespace DropboxSync.UIL
         /// </summary>
         public async Task FailedQueueMonitoringAsync()
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(10));
 
             while (await timer.WaitForNextTickAsync())
             {
@@ -333,7 +335,9 @@ namespace DropboxSync.UIL
 
                 BrokerEvent eventType = (BrokerEvent)brokerEventParseResult;
 
-                bool redirectionResult = Task.Run<bool>(() => EventRedirection(eventType, failedEvent.MessageJson)).Result;
+                // bool redirectionResult = Task.Run<bool>(() => EventRedirection(eventType, failedEvent.MessageJson)).Result;
+                bool redirectionResult = Task.Run<bool>(() =>
+                    _eventManagerLocator.RedirectToManager(failedEvent.MessageJson)).Result;
 
                 if (redirectionResult)
                 {
@@ -403,50 +407,6 @@ namespace DropboxSync.UIL
                 ReceiverTaskCancellationTokenSource.Cancel();
 
             Reconnection();
-        }
-
-        private void Message_Received(IReceiverLink receiver, Message message)
-        {
-            string textMessage = Encoding.UTF8.GetString((byte[])message.Body);
-
-            if (string.IsNullOrEmpty(textMessage)) throw new NullReferenceException(nameof(textMessage));
-
-            EventModel eventModel = JsonConvert.DeserializeObject<EventModel>(textMessage) ??
-                throw new NullReferenceException(nameof(EventModel));
-
-            Enum.TryParse(typeof(BrokerEvent), eventModel.EventName, out object? eventObj);
-
-            if (eventObj is null)
-            {
-                _logger.LogError("{date} | The received event couldn't be treated by the app", DateTime.Now);
-                return;
-            }
-
-            BrokerEvent brokerEvent = (BrokerEvent)eventObj;
-            _logger.LogInformation("{date} | Event \"{brokerEvent}\" received", DateTime.Now, brokerEvent);
-
-            int eventVersion = StringHelper.KeepOnlyDigits(eventModel.Version);
-
-            if (eventVersion != SUPPORT_EVENT_VERSION)
-            {
-                _logger.LogWarning("The event \"{eventName}\" with version \"{eventVersion}\" is not supported by " +
-                    "this app (supported version: {supportedVersion})", eventModel.EventName, eventVersion, SUPPORT_EVENT_VERSION);
-            }
-            else
-            {
-                if (EventRedirection(brokerEvent, textMessage))
-                {
-                    // When a message is successfully treated, a ACK is sent to notify the broker
-                    _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
-                }
-                else
-                {
-
-                    SendToFailedQueue(textMessage, brokerEvent);
-                }
-
-                // receiver.Accept(message);
-            }
         }
 
         /// <summary>
