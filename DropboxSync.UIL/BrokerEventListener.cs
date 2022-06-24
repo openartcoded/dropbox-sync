@@ -216,6 +216,17 @@ namespace DropboxSync.UIL
                 {
                     bool result = _eventManagerLocator.RedirectToManager(textMessage);
 
+                    if (result)
+                    {
+                        _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
+                    }
+                    else
+                    {
+                        _logger.LogError("{date} | Event {eventName} couldn't be treated successfully and is sent to failed queue",
+                            DateTime.Now, eventModel.EventName);
+                        SendToFailedQueue(textMessage, brokerEvent);
+                    }
+
                     // if (EventRedirection(brokerEvent, textMessage))
                     // {
                     //     // When a message is successfully treated, a ACK is sent to notify the broker

@@ -60,7 +60,6 @@ namespace DropboxSync.UIL.Locators
 
                 if (eventManagerType is null) continue;
 
-                // object? managerService = _serviceProvider.GetService(eventManagerType);
                 object? managerService = Program.Host?.Services.GetRequiredService(eventManagerType);
 
                 if (managerService is null) throw new NullValueException(nameof(managerService));
@@ -104,9 +103,6 @@ namespace DropboxSync.UIL.Locators
 
                             return (bool)result;
                         }
-
-                        // return (bool)(methodInfo.Invoke(managerService, new[] { deserializedObject }) ??
-                        //     throw new NullValueException(nameof(methodInfo.Name)));
                     }
                 }
             }
