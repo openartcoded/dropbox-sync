@@ -52,6 +52,9 @@ namespace DropboxSync.UIL
                 throw new ArgumentNullException(nameof(documentManager));
         }
 
+        /// <summary>
+        /// Initialize the broker's address
+        /// </summary>
         public void Initialize()
         {
             string username = _amqpCredentials.AmqpUsername;
@@ -77,6 +80,10 @@ namespace DropboxSync.UIL
             }
         }
 
+        /// <summary>
+        /// Start the session, the listener and the failed queue monitoring task
+        /// </summary>
+        /// <exception cref="NullReferenceException"></exception>
         public void Start()
         {
             if (AmqpConnection is null) throw new NullReferenceException(nameof(AmqpConnection));
@@ -92,6 +99,8 @@ namespace DropboxSync.UIL
                 Task.Factory.StartNew(
                     () => ReceiveMessage(receiverLink, token), token);
 
+                Task.Factory.StartNew(async () => await FailedQueueMonitoringAsync());
+
                 // receiverLink.Start(200, Message_Received);
                 _logger.LogInformation("{date} | Listening on AMQP", DateTime.Now);
             }
@@ -106,17 +115,72 @@ namespace DropboxSync.UIL
             }
         }
 
+        /// <summary>
+        /// Reconnect to the broker and restart the whole <see cref="Initialize"/>() and
+        /// <see cref="Start"/>() process
+        /// </summary>
+        /// <exception cref="NullReferenceException"></exception>
+        private void Reconnection()
+        {
+            if (AmqpConnection is null) throw new NullReferenceException(nameof(AmqpConnection));
+
+            string username = _amqpCredentials.AmqpUsername;
+            string password = _amqpCredentials.AmqpPassword;
+            string host = _amqpCredentials.AmqpHost;
+            int port = _amqpCredentials.AmqpPort;
+
+            _logger.LogInformation("Attempt to reconnect to the broker");
+
+
+            while (AmqpConnection.IsClosed)
+            {
+                Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
+
+                try
+                {
+                    AmqpConnection = new Connection(address);
+                    AmqpConnection.Closed += ConnectionClosed;
+                    _session = ((IConnection)AmqpConnection).CreateSession();
+                    ReceiverLink receiverLink = new ReceiverLink(_session as Session, "", _amqpCredentials.AmqpQueue);
+                    // receiverLink.Start(200, Message_Received);
+
+                    ReceiverTaskCancellationTokenSource = new CancellationTokenSource();
+                    CancellationToken token = ReceiverTaskCancellationTokenSource.Token;
+
+                    Task.Factory.StartNew(
+                        () => ReceiveMessage(receiverLink, token), token);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError("{date} | Connection to the broker failed : {ex} : {iex}",
+                        DateTime.Now, e.Message, e.InnerException?.Message);
+                }
+                Thread.Sleep(5000);
+            }
+
+            _logger.LogInformation("{date} | Connection restablished!", DateTime.Now);
+        }
+
+        /// <summary>
+        /// Listen on the AMQP queue and treat received messages
+        /// </summary>
+        /// <param name="receiver">The <see cref="ReceiverLink"/> object initialized in <see cref="Start"/>()
+        /// or <see cref="Reconnection"/></param>
+        /// <param name="cancellationToken">The cancellation token requested when the connection to the broker closes</param>
         private void ReceiveMessage(ReceiverLink receiver, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogError("{date} | Message receiving task was cancelled before it started!", DateTime.Now);
+                receiver.Close();
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 Message message = receiver.Receive();
+
+                if (message is null) continue;
 
                 string textMessage = Encoding.UTF8.GetString((byte[])message.Body);
 
@@ -160,50 +224,160 @@ namespace DropboxSync.UIL
             }
         }
 
-        private void Reconnection()
+        /// <summary>
+        /// Execute a timer that will trigger every 5 minutes and redirect to <see cref="CheckFailedQueue"/> method
+        /// </summary>
+        public async Task FailedQueueMonitoringAsync()
         {
-            if (AmqpConnection is null) throw new NullReferenceException(nameof(AmqpConnection));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
 
-            string username = _amqpCredentials.AmqpUsername;
-            string password = _amqpCredentials.AmqpPassword;
-            string host = _amqpCredentials.AmqpHost;
-            int port = _amqpCredentials.AmqpPort;
-
-            _logger.LogInformation("Attempt to reconnect to the broker");
-
-
-            while (AmqpConnection.IsClosed)
+            while (await timer.WaitForNextTickAsync())
             {
-                Address address = new Address($"amqp://{username}:{password}@{host}:{port}");
-
-                try
-                {
-                    AmqpConnection = new Connection(address);
-                    AmqpConnection.Closed += ConnectionClosed;
-                    _session = ((IConnection)AmqpConnection).CreateSession();
-                    ReceiverLink receiverLink = new ReceiverLink(_session as Session, "", _amqpCredentials.AmqpQueue);
-                    // receiverLink.Start(200, Message_Received);
-
-                    ReceiverTaskCancellationTokenSource = new CancellationTokenSource();
-                    CancellationToken token = ReceiverTaskCancellationTokenSource.Token;
-
-                    Task.Factory.StartNew(
-                        () => ReceiveMessage(receiverLink, token), token);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError("{date} | Connection to the broker failed : {ex} : {iex}",
-                        DateTime.Now, e.Message, e.InnerException?.Message);
-                }
-                Thread.Sleep(5000);
+                _logger.LogInformation("{date} | Checking the failed queue", DateTime.Now);
+                CheckFailedQueue();
             }
-
-            _logger.LogInformation("{date} | Connection restablished!", DateTime.Now);
         }
 
+        /// <summary>
+        /// Monitor the <c>dropbox-sync-failed</c> queue and treat every messages. If no message is received after
+        /// 30 seconds, the listening process stop and it starts to process received messages. The listener is closed
+        /// at the end
+        /// </summary>
+        public void CheckFailedQueue()
+        {
+            if (_session is null) throw new NullReferenceException(nameof(_session));
+
+            _logger.LogInformation("{date} | Fail queue check started", DateTime.Now);
+
+            List<Message> messages = new List<Message>();
+
+            ReceiverLink? receiverLink = _session.CreateReceiver("receiver" + Guid.NewGuid(), new Source()
+            {
+                Address = "dropbox-sync-failed",
+                Capabilities = new[]
+                {
+                    new Symbol("queue")
+                },
+                Durable = 1
+            }) as ReceiverLink;
+
+            if (receiverLink is null) throw new NullValueException(nameof(receiverLink));
+
+            while (true)
+            {
+                Message? message = receiverLink.Receive(TimeSpan.FromSeconds(15));
+                if (message is null)
+                {
+                    _logger.LogWarning("{date} | There is no more messages in failed queue!",
+                        DateTime.Now);
+                    break;
+                }
+
+                _logger.LogInformation("{date} | Message received from failed queue : {msg}",
+                    DateTime.Now, Encoding.UTF8.GetString((byte[])message.Body));
+
+                messages.Add(message);
+            }
+
+            foreach (Message message in messages)
+            {
+                if (message is null || message.Body is null)
+                {
+                    receiverLink.Reject(message);
+                    continue;
+                }
+
+                FailedEventModel? failedEvent =
+                    JsonConvert.DeserializeObject<FailedEventModel>(Encoding.UTF8.GetString((byte[])message.Body));
+
+                if (failedEvent is null) continue;
+                if (string.IsNullOrEmpty(failedEvent.MessageJson)) continue;
+
+                EventModel? eventModel = JsonConvert.DeserializeObject<EventModel>(failedEvent.MessageJson);
+
+                if (eventModel is null)
+                {
+                    receiverLink.Reject(message);
+                    continue;
+                }
+
+                if (!Enum.TryParse(typeof(BrokerEvent), eventModel.EventName, out object? brokerEventParseResult))
+                {
+                    receiverLink.Reject(message);
+                    continue;
+                }
+
+                if (brokerEventParseResult is null)
+                {
+                    receiverLink.Reject(message);
+                    continue;
+                }
+
+                BrokerEvent eventType = (BrokerEvent)brokerEventParseResult;
+
+                bool redirectionResult = Task.Run<bool>(() => EventRedirection(eventType, failedEvent.MessageJson)).Result;
+
+                if (redirectionResult)
+                {
+                    _logger.LogInformation("{date} | Failed message successfully treated : \"{msg}\"",
+                        DateTime.Now, failedEvent.MessageJson);
+
+                    receiverLink.Accept(message);
+                }
+                else
+                {
+                    if (failedEvent.Attempt >= 5)
+                    {
+                        _logger.LogInformation("{date} | Failed message reached 5 attempts and is sent to DLQ : {msg}",
+                            DateTime.Now, failedEvent.MessageJson);
+                        receiverLink.Reject(message);
+                    }
+                    else
+                    {
+                        failedEvent.Attempt++;
+                        Message newMessage = new Message()
+                        {
+                            BodySection = new Data()
+                            {
+                                Binary = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(failedEvent))
+                            }
+                        };
+
+                        if (_session is null) throw new NullReferenceException(nameof(_session));
+
+                        ISenderLink sender = _session.CreateSender("sender" + Guid.NewGuid(), new Target
+                        {
+                            Address = "dropbox-sync-failed",
+                            Capabilities = new[]
+                            {
+                                new Symbol("queue")
+                            },
+                            Durable = 1
+                        });
+
+                        sender.Send(newMessage);
+
+                        _logger.LogInformation("{date} | Message resent to failed queue : {msg}",
+                            DateTime.Now, failedEvent.MessageJson);
+
+                        sender.Close();
+
+                        receiverLink.Accept(message);
+                    }
+                }
+            }
+
+            receiverLink.Close();
+        }
+
+        /// <summary>
+        /// Executed when the connection to the broker is lost or closed.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="error"></param>
         private void ConnectionClosed(IAmqpObject sender, Amqp.Framing.Error error)
         {
-            _logger.LogCritical("Connection to the broker closed!");
+            _logger.LogCritical("{date} | Connection to the broker closed! : {err}", DateTime.Now, error.Description);
 
             MailHelper.SendBrokerConnectionLostEmail();
 
@@ -257,12 +431,15 @@ namespace DropboxSync.UIL
             }
         }
 
+        /// <summary>
+        /// Send the failed event to the <c>dropbox-sync-failed</c> queue with attempt count initialized to 0
+        /// </summary>
+        /// <param name="textMessage">The json formatted event</param>
+        /// <param name="brokerEvent">The event type</param>
         private void SendToFailedQueue(string textMessage, BrokerEvent brokerEvent)
         {
             // When a message is unsuccessfully treated, it is sent to the DLQ
             _logger.LogError("{date} | Event \"{event}\" couldn't be treated!", DateTime.Now, brokerEvent);
-
-            // TODO : If event is failed, send it to dropbox-sync-failed
 
             if (_session is null) throw new NullReferenceException(nameof(_session));
 
