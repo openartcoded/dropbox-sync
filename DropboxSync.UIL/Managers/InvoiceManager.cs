@@ -44,7 +44,6 @@ namespace DropboxSync.UIL.Managers
                 throw new ArgumentNullException(nameof(dropboxService));
         }
 
-        [MethodEvent(typeof(InvoiceGeneratedModel), nameof(BrokerEvent.InvoiceGenerated))]
         public bool Create<T>(T model) where T : InvoiceGeneratedModel
         {
             if (model is null) throw new ArgumentNullException(nameof(model));

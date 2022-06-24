@@ -82,12 +82,7 @@ namespace DropboxSync.UIL.Locators
 
                         object? deserializedObject = JsonConvert.DeserializeObject(eventJson, attribute.EventType);
 
-                        if (deserializedObject is null)
-                        {
-                            _logger.LogError("{date} | Could not deserialize json \"{json}\" to an object of type \"{type}\"",
-                                DateTime.Now, eventJson, attribute.EventType);
-                            return false;
-                        }
+                        if (deserializedObject is null) throw new NullValueException(nameof(deserializedObject));
 
                         if (methodInfo.IsGenericMethod)
                         {
