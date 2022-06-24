@@ -68,7 +68,7 @@ namespace DropboxSync.UIL
             {
                 AmqpConnection = new Connection(address);
                 _logger.LogInformation("AMQP Connection established!");
-                AmqpConnection.Closed += Connection_Closed;
+                AmqpConnection.Closed += ConnectionClosed;
             }
             catch (Exception e)
             {
@@ -179,7 +179,7 @@ namespace DropboxSync.UIL
                 try
                 {
                     AmqpConnection = new Connection(address);
-                    AmqpConnection.Closed += Connection_Closed;
+                    AmqpConnection.Closed += ConnectionClosed;
                     _session = ((IConnection)AmqpConnection).CreateSession();
                     ReceiverLink receiverLink = new ReceiverLink(_session as Session, "", _amqpCredentials.AmqpQueue);
                     // receiverLink.Start(200, Message_Received);
@@ -201,7 +201,7 @@ namespace DropboxSync.UIL
             _logger.LogInformation("{date} | Connection restablished!", DateTime.Now);
         }
 
-        private void Connection_Closed(IAmqpObject sender, Amqp.Framing.Error error)
+        private void ConnectionClosed(IAmqpObject sender, Amqp.Framing.Error error)
         {
             _logger.LogCritical("Connection to the broker closed!");
 
