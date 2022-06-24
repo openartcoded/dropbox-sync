@@ -5,6 +5,7 @@ using Amqp.Types;
 using DropboxSync.BLL.IServices;
 using DropboxSync.Helpers;
 using DropboxSync.UIL.Enums;
+using DropboxSync.UIL.Locators;
 using DropboxSync.UIL.Managers;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
@@ -25,6 +26,7 @@ namespace DropboxSync.UIL
         private readonly IDossierManager _dossierManager;
         private readonly IDropboxService _dropboxService;
         private readonly IDocumentManager _documentManager;
+        private readonly EventManagerLocator _eventManagerLocator;
 
         private ISession? _session;
 
@@ -34,7 +36,8 @@ namespace DropboxSync.UIL
         public Connection? AmqpConnection { get; private set; }
 
         public BrokerEventListener(ILogger<BrokerEventListener> logger, IExpenseManager expenseManager,
-            IInvoiceManager invoiceManager, IDossierManager dossierManager, IDropboxService dropboxService, IDocumentManager documentManager)
+            IInvoiceManager invoiceManager, IDossierManager dossierManager, IDropboxService dropboxService,
+            IDocumentManager documentManager, EventManagerLocator eventManagerLocator)
         {
             _logger = logger ??
                 throw new ArgumentNullException(nameof(logger));
@@ -50,6 +53,8 @@ namespace DropboxSync.UIL
                 throw new ArgumentNullException(nameof(dropboxService));
             _documentManager = documentManager ??
                 throw new ArgumentNullException(nameof(documentManager));
+            _eventManagerLocator = eventManagerLocator ??
+                throw new ArgumentNullException(nameof(eventManagerLocator));
         }
 
         /// <summary>
@@ -209,15 +214,17 @@ namespace DropboxSync.UIL
                 }
                 else
                 {
-                    if (EventRedirection(brokerEvent, textMessage))
-                    {
-                        // When a message is successfully treated, a ACK is sent to notify the broker
-                        _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
-                    }
-                    else
-                    {
-                        SendToFailedQueue(textMessage, brokerEvent);
-                    }
+                    bool result = _eventManagerLocator.RedirectToManager(textMessage);
+
+                    // if (EventRedirection(brokerEvent, textMessage))
+                    // {
+                    //     // When a message is successfully treated, a ACK is sent to notify the broker
+                    //     _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
+                    // }
+                    // else
+                    // {
+                    //     SendToFailedQueue(textMessage, brokerEvent);
+                    // }
 
                     receiver.Accept(message);
                 }
