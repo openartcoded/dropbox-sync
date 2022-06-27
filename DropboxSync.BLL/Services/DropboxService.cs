@@ -272,10 +272,12 @@ namespace DropboxSync.BLL.Services
         }
 
         public async Task<DropboxMovedFile?> MoveFileAsync(string dropboxFileId, DateTime fileCreationDate, FileTypes movingFilesType,
-            bool isProcess, string? dossierName = null)
+            bool isProcess, string? dossierName = null, string? label = null)
         {
             if (string.IsNullOrEmpty(dropboxFileId)) throw new ArgumentNullException(nameof(dropboxFileId));
             if (string.IsNullOrEmpty(dossierName) && isProcess) throw new ArgumentNullException(nameof(dossierName));
+            if (!string.IsNullOrEmpty(label) && movingFilesType != FileTypes.Expenses)
+                throw new InvalidEnumValueException(nameof(movingFilesType));
 
             DropboxMovedFile? finalOutput = null;
 
@@ -308,11 +310,25 @@ namespace DropboxSync.BLL.Services
             {
                 if (string.IsNullOrEmpty(dossierName)) throw new NullValueException(nameof(dossierName));
 
-                newPath = GenerateDossierFolderPath(fileCreationDate.Year, dossierName, movingFilesType);
+                if (string.IsNullOrEmpty(label))
+                {
+                    newPath = GenerateDossierFolderPath(fileCreationDate.Year, dossierName, movingFilesType);
+                }
+                else
+                {
+                    newPath = GenerateLabeledExpenseDestinationPath(fileCreationDate.Year, label, dossierName);
+                }
             }
             else
             {
-                newPath = GeneratedFolderPath(fileCreationDate.Year, movingFilesType);
+                if (string.IsNullOrEmpty(label))
+                {
+                    newPath = GeneratedFolderPath(fileCreationDate.Year, movingFilesType);
+                }
+                else
+                {
+                    newPath = GenerateLabeledExpenseDestinationPath(fileCreationDate.Year, label);
+                }
             }
 
             string? verifiedPath = await VerifyFolderExist(newPath, true);

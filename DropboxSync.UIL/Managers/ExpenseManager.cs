@@ -218,6 +218,8 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
+            // TODO : Move the expense to the new folder based on the label
+
             expenseFromRepo.Label = model.Label;
             expenseFromRepo.Price = model.PriceHVat;
             expenseFromRepo.Vat = model.Vat;
