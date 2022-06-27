@@ -548,7 +548,7 @@ namespace DropboxSync.BLL.Services
         /// <param name="createdAt">The file's creation date</param>
         /// <param name="fileType">The type of File generated</param>
         /// <returns>
-        /// Dropbox's complete path <c> ROOT_FOLDER/YEAR/UNPROCESSED/FILETYPE </c> for Invoices and Expenses and 
+        /// Dropbox's complete path <c> ROOT_FOLDER/YEAR/UNPROCESSED/FILETYPE </c> for Invoices and Expenses and
         /// <c> ROOT_FOLDER/YEAR/DOSSIERS </c> for Dossier
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
@@ -614,8 +614,8 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
-        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename seperated by 
-        /// <paramref name="seperator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c> 
+        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename seperated by
+        /// <paramref name="seperator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c>
         /// is created, then the generated name would look like this.
         /// <code>
         /// 2022.10.22 1842-MyFilesName.pdf
@@ -655,6 +655,42 @@ namespace DropboxSync.BLL.Services
             if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
 
             return string.Join('/', destinationFolderPath, fileName);
+        }
+
+        /// <summary>
+        /// Generate a destination path for expense based on its tag
+        /// </summary>
+        /// <param name="year">Expense year of creation</param>
+        /// <param name="tag">Expense's tag</param>
+        /// <param name="dossierName">the destination dossier. If it is null or empty, the expense is sent to
+        /// <c>UNPROCESSED</c> directory otherwise it is sent to the dossier</param>
+        /// <returns>A Unix type folder destination path in Dropbox</returns>
+        /// <exception cref="IndexOutOfRangeException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        private string GenerateExpenseTagDestinationPath(int year, string tag, string? dossierName = null)
+        {
+            if (year < 0) throw new IndexOutOfRangeException(nameof(year));
+            if (string.IsNullOrEmpty(tag)) throw new ArgumentNullException(nameof(tag));
+
+            if (string.IsNullOrEmpty(dossierName))
+            {
+                return string.Join('/',
+                    ROOT_FOLDER,
+                    year.ToString(),
+                     "UNPROCESSED",
+                      FileTypes.Expenses.ToString().ToUpper(),
+                      tag.ToUpper());
+            }
+            else
+            {
+                return string.Join('/',
+                    ROOT_FOLDER,
+                    year.ToString(),
+                    FileTypes.Dossiers.ToString().ToUpper(),
+                    dossierName,
+                    FileTypes.Expenses.ToString().ToUpper(),
+                    tag.ToUpper());
+            }
         }
 
         /// <summary>
