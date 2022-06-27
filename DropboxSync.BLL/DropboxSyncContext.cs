@@ -33,7 +33,7 @@ namespace DropboxSync.BLL
 
             string appPath = Environment.GetEnvironmentVariable("DROPBOX_APPDATA_PATH") ??
                 "/db";
-                //throw new NullReferenceException($"Environnement variable DROPBOX_APPDATA_PATH couldn't be retrieved!");
+            //throw new NullReferenceException($"Environnement variable DROPBOX_APPDATA_PATH couldn't be retrieved!");
 
             string dbPath = Path.Join(appPath, dbName);
             string fullPath = Path.GetFullPath(dbPath);

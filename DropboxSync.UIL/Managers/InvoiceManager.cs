@@ -1,8 +1,12 @@
-﻿using AutoMapper;
+﻿using System.Reflection.Metadata;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using AutoMapper;
 using DropboxSync.BLL;
 using DropboxSync.BLL.Entities;
 using DropboxSync.BLL.IServices;
 using DropboxSync.Helpers;
+using DropboxSync.UIL.Attributes;
 using DropboxSync.UIL.Models;
 using Microsoft.Extensions.Logging;
 using System;
@@ -10,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DropboxSync.UIL.Enums;
 
 namespace DropboxSync.UIL.Managers
 {
