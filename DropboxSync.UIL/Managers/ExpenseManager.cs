@@ -235,8 +235,8 @@ namespace DropboxSync.UIL.Managers
                         continue;
                     }
 
-                    _logger.LogInformation("{date} | Upload with ID \"{uploadId}\" successfully moved to dossier \"{label}\"",
-                        DateTime.Now, upload.Id, model.Label);
+                    _logger.LogInformation("{date} | Upload with ID \"{uploadId}\" successfully moved from \"{oldPath}\" to \"{newPath}\"",
+                        DateTime.Now, upload.Id, dropboxMoveResult.OldPath, dropboxMoveResult.NewPath);
                 }
             }
 
