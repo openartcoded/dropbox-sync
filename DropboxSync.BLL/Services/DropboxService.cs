@@ -693,9 +693,9 @@ namespace DropboxSync.BLL.Services
                 return string.Join('/',
                     ROOT_FOLDER,
                     year.ToString(),
-                     "UNPROCESSED",
-                      FileTypes.Expenses.ToString().ToUpper(),
-                      label.ToUpper());
+                    "UNPROCESSED",
+                    FileTypes.Expenses.ToString().ToUpper(),
+                    label.ToUpper());
             }
             else
             {
