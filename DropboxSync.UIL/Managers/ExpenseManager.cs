@@ -218,6 +218,28 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
+            IEnumerable<UploadEntity>? expenseUploads = _uploadService.GetExpenseRelatedUploads(expenseFromRepo.Id);
+
+            if (expenseUploads is not null)
+            {
+                foreach (UploadEntity upload in expenseUploads)
+                {
+                    DropboxMovedFile? dropboxMoveResult = AsyncHelper.RunSync(() =>
+                        _dropboxService.MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses,
+                        false, label: model.Label));
+
+                    if (dropboxMoveResult is null)
+                    {
+                        _logger.LogWarning("{date} | Could not move upload with ID \"{uploadId}\" to the dossier \"{label}\"",
+                            DateTime.Now, upload.Id, model.Label);
+                        continue;
+                    }
+
+                    _logger.LogInformation("{date} | Upload with ID \"{uploadId}\" successfully moved from \"{oldPath}\" to \"{newPath}\"",
+                        DateTime.Now, upload.Id, dropboxMoveResult.OldPath, dropboxMoveResult.NewPath);
+                }
+            }
+
             expenseFromRepo.Label = model.Label;
             expenseFromRepo.Price = model.PriceHVat;
             expenseFromRepo.Vat = model.Vat;

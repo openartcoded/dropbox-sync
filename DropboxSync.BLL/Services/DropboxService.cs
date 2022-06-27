@@ -272,10 +272,12 @@ namespace DropboxSync.BLL.Services
         }
 
         public async Task<DropboxMovedFile?> MoveFileAsync(string dropboxFileId, DateTime fileCreationDate, FileTypes movingFilesType,
-            bool isProcess, string? dossierName = null)
+            bool isProcess, string? dossierName = null, string? label = null)
         {
             if (string.IsNullOrEmpty(dropboxFileId)) throw new ArgumentNullException(nameof(dropboxFileId));
             if (string.IsNullOrEmpty(dossierName) && isProcess) throw new ArgumentNullException(nameof(dossierName));
+            if (!string.IsNullOrEmpty(label) && movingFilesType != FileTypes.Expenses)
+                throw new InvalidEnumValueException(nameof(movingFilesType));
 
             DropboxMovedFile? finalOutput = null;
 
@@ -308,11 +310,25 @@ namespace DropboxSync.BLL.Services
             {
                 if (string.IsNullOrEmpty(dossierName)) throw new NullValueException(nameof(dossierName));
 
-                newPath = GenerateDossierFolderPath(fileCreationDate.Year, dossierName, movingFilesType);
+                if (string.IsNullOrEmpty(label))
+                {
+                    newPath = GenerateDossierFolderPath(fileCreationDate.Year, dossierName, movingFilesType);
+                }
+                else
+                {
+                    newPath = GenerateLabeledExpenseDestinationPath(fileCreationDate.Year, label, dossierName);
+                }
             }
             else
             {
-                newPath = GeneratedFolderPath(fileCreationDate.Year, movingFilesType);
+                if (string.IsNullOrEmpty(label))
+                {
+                    newPath = GeneratedFolderPath(fileCreationDate.Year, movingFilesType);
+                }
+                else
+                {
+                    newPath = GenerateLabeledExpenseDestinationPath(fileCreationDate.Year, label);
+                }
             }
 
             string? verifiedPath = await VerifyFolderExist(newPath, true);
@@ -548,7 +564,7 @@ namespace DropboxSync.BLL.Services
         /// <param name="createdAt">The file's creation date</param>
         /// <param name="fileType">The type of File generated</param>
         /// <returns>
-        /// Dropbox's complete path <c> ROOT_FOLDER/YEAR/UNPROCESSED/FILETYPE </c> for Invoices and Expenses and 
+        /// Dropbox's complete path <c> ROOT_FOLDER/YEAR/UNPROCESSED/FILETYPE </c> for Invoices and Expenses and
         /// <c> ROOT_FOLDER/YEAR/DOSSIERS </c> for Dossier
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
@@ -614,8 +630,8 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
-        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename seperated by 
-        /// <paramref name="seperator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c> 
+        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename seperated by
+        /// <paramref name="seperator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c>
         /// is created, then the generated name would look like this.
         /// <code>
         /// 2022.10.22 1842-MyFilesName.pdf
@@ -658,6 +674,41 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
+        /// Generate a destination path for expense based on its label
+        /// </summary>
+        /// <param name="year">Expense year of creation</param>
+        /// <param name="label">Expense's label</param>
+        /// <param name="dossierName">the destination dossier. If it is null or empty, the expense is sent to
+        /// <c>UNPROCESSED</c> directory otherwise it is sent to the dossier</param>
+        /// <returns>A Unix type folder destination path in Dropbox</returns>
+        /// <exception cref="IndexOutOfRangeException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        private string GenerateLabeledExpenseDestinationPath(int year, string label, string? dossierName = null)
+        {
+            if (year < 0) throw new IndexOutOfRangeException(nameof(year));
+            if (string.IsNullOrEmpty(label)) throw new ArgumentNullException(nameof(label));
+
+            if (string.IsNullOrEmpty(dossierName))
+            {
+                return string.Join('/',
+                    ROOT_FOLDER,
+                    year.ToString(),
+                    "UNPROCESSED",
+                    FileTypes.Expenses.ToString().ToUpper(),
+                    label.ToUpper());
+            }
+            else
+            {
+                return string.Join('/',
+                    ROOT_FOLDER,
+                    year.ToString(),
+                    FileTypes.Dossiers.ToString().ToUpper(),
+                    dossierName,
+                    FileTypes.Expenses.ToString().ToUpper(),
+                    label.ToUpper());
+            }
+        }
+
         /// Generate a Unix file path to the archives in the next format
         /// <code>
         /// /ROOT_FOLDER/ARCHIVES
