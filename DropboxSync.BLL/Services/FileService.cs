@@ -3,14 +3,8 @@ using DropboxSync.Helpers;
 using DropboxSync.BLL.IServices;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
+using Ionic.Zip;
 
 namespace DropboxSync.BLL.Services
 {
@@ -58,7 +52,7 @@ namespace DropboxSync.BLL.Services
         /// </summary>
         /// <param name="fileId">The ID of the file to download</param>
         /// <returns><see cref="SavedFile"/> object if download and save was successfull. <c>null</c> Otherwise</returns>
-        public async Task<SavedFile?> DownloadFile(string fileId)
+        public async Task<SavedFile?> DownloadFile(string fileId, bool lockFile)
         {
             if (string.IsNullOrEmpty(fileId)) throw new ArgumentNullException(nameof(fileId));
 
@@ -131,14 +125,45 @@ namespace DropboxSync.BLL.Services
                 return finalOutput;
             }
 
-            string filePath = Path.Join(FILE_DOWNLOAD_DIR, string.Join('-', fileId, fileName));
+            string filePath;
+            FileInfo fileInfo;
 
-            await File.WriteAllBytesAsync(filePath, fileData);
-            FileInfo fileInfo = new FileInfo(filePath);
-            if (!fileInfo.Exists)
+            if (lockFile)
             {
-                _logger.LogError("{date} | File at path \"{filePath}\" doesn't exist!", DateTime.Now, filePath);
-                return finalOutput;
+                string tmpFilePath = Path.Join(FILE_DOWNLOAD_DIR, fileName);
+                filePath = Path.Join(FILE_DOWNLOAD_DIR, string.Join('-', fileId, fileName));
+
+                await File.WriteAllBytesAsync(tmpFilePath, fileData);
+                fileInfo = new FileInfo(tmpFilePath);
+                if (!fileInfo.Exists)
+                {
+                    _logger.LogError("{date} | File at path \"{filePath}\" doesn't exist!", DateTime.Now, tmpFilePath);
+                    return finalOutput;
+                }
+
+                string zipPassword = Environment.GetEnvironmentVariable("ZIP_PASSWORD") ??
+                    "1234";
+
+                using (ZipFile zip = new ZipFile())
+                {
+                    zip.Password = zipPassword;
+                    zip.AddFile(tmpFilePath, "");
+                    zip.Save(filePath);
+                }
+
+                File.Delete(tmpFilePath);
+            }
+            else
+            {
+                filePath = Path.Join(FILE_DOWNLOAD_DIR, string.Join('-', fileId, fileName));
+
+                await File.WriteAllBytesAsync(filePath, fileData);
+                fileInfo = new FileInfo(filePath);
+                if (!fileInfo.Exists)
+                {
+                    _logger.LogError("{date} | File at path \"{filePath}\" doesn't exist!", DateTime.Now, filePath);
+                    return finalOutput;
+                }
             }
 
             long fileSize = fileInfo.Length;

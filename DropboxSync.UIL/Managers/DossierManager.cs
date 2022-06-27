@@ -56,7 +56,7 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            SavedFile? localSaveResult = AsyncHelper.RunSync(() => _fileService.DownloadFile(model.UploadId));
+            SavedFile? localSaveResult = AsyncHelper.RunSync(() => _fileService.DownloadFile(model.UploadId, true));
 
             if (localSaveResult is null)
             {
