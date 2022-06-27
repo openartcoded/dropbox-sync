@@ -218,8 +218,6 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            // TODO : Move the expense to the new folder based on the label
-
             IEnumerable<UploadEntity>? expenseUploads = _uploadService.GetExpenseRelatedUploads(expenseFromRepo.Id);
 
             if (expenseUploads is not null)
