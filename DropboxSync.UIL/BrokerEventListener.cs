@@ -249,7 +249,13 @@ namespace DropboxSync.UIL
         /// </summary>
         public async Task FailedQueueMonitoringAsync()
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(10));
+            string? timerMinutes = Environment.GetEnvironmentVariable("FAILED_QUEUE_MONITORING_TIMER") ??
+                "10";
+
+            if (!double.TryParse(timerMinutes, out double minutes))
+                throw new InvalidVariableTypeException(nameof(timerMinutes));
+
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(minutes));
 
             while (await timer.WaitForNextTickAsync())
             {
