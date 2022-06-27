@@ -241,7 +241,7 @@ namespace DropboxSync.BLL.Services
 
             DropboxSavedFile? dropboxSaved = null;
 
-            string dropboxDestinationPath = GenerateFileDestinationPath(GeneratedFolderPath(createdAt.Year, FileTypes.Dossiers), dossierName);
+            string dropboxDestinationPath = GenerateArchivePath();
 
             string? dropboxFolderPath = await VerifyFolderExist(dropboxDestinationPath, true);
 
@@ -707,6 +707,18 @@ namespace DropboxSync.BLL.Services
                     FileTypes.Expenses.ToString().ToUpper(),
                     label.ToUpper());
             }
+        }
+
+        /// Generate a Unix file path to the archives in the next format
+        /// <code>
+        /// /ROOT_FOLDER/ARCHIVES
+        /// </code>
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        private string GenerateArchivePath()
+        {
+            return string.Join('/', ROOT_FOLDER, "ARCHIVES");
         }
 
         /// <summary>
