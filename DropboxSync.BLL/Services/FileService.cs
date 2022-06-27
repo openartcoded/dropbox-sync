@@ -147,7 +147,7 @@ namespace DropboxSync.BLL.Services
                 using (ZipFile zip = new ZipFile())
                 {
                     zip.Password = zipPassword;
-                    zip.AddFile(tmpFilePath);
+                    zip.AddFile(tmpFilePath, "");
                     zip.Save(filePath);
                 }
 
