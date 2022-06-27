@@ -86,9 +86,9 @@ namespace DropboxSync.UIL.Managers
 
             _uploadService.Create(upload);
 
-            if(!_uploadService.SaveChanges())
+            if (!_uploadService.SaveChanges())
             {
-                _logger.LogError("{date} | Could not save the upload \"{uploadFileName}\" in the database!", 
+                _logger.LogError("{date} | Could not save the upload \"{uploadFileName}\" in the database!",
                 DateTime.Now, upload.OriginalFileName);
                 return false;
             }
@@ -278,7 +278,8 @@ namespace DropboxSync.UIL.Managers
 
                     DropboxMovedFile? dropboxMovedFile = AsyncHelper.RunSync(() =>
                         _dropboxService
-                            .MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, true, dossierFromRepo.Name));
+                            .MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses,
+                            true, dossierFromRepo.Name, expenseFromRepo.Label));
 
                     if (dropboxMovedFile is null)
                     {
@@ -328,7 +329,7 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            DropboxMovedFile? dropboxMoveResult = AsyncHelper.RunSync(() => 
+            DropboxMovedFile? dropboxMoveResult = AsyncHelper.RunSync(() =>
                 _dropboxService
                     .MoveFileAsync(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, true, dossierFromRepo.Name));
 
@@ -387,9 +388,10 @@ namespace DropboxSync.UIL.Managers
                     continue;
                 }
 
-                DropboxMovedFile? dropboxMovedFile = AsyncHelper.RunSync(() => 
+                DropboxMovedFile? dropboxMovedFile = AsyncHelper.RunSync(() =>
                     _dropboxService
-                        .MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses, false));
+                        .MoveFileAsync(upload.DropboxFileId, expenseFromRepo.CreatedAt, FileTypes.Expenses,
+                        false, label: expenseFromRepo.Label));
 
                 if (dropboxMovedFile is null)
                 {
@@ -438,7 +440,7 @@ namespace DropboxSync.UIL.Managers
                 return false;
             }
 
-            DropboxMovedFile? dropboxMoveResult = AsyncHelper.RunSync(() => 
+            DropboxMovedFile? dropboxMoveResult = AsyncHelper.RunSync(() =>
                 _dropboxService
                     .MoveFileAsync(uploadFromRepo.DropboxFileId, invoiceFromRepo.CreatedAt, FileTypes.Invoices, false));
 
