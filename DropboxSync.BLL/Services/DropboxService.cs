@@ -658,19 +658,19 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
-        /// Generate a destination path for expense based on its tag
+        /// Generate a destination path for expense based on its label
         /// </summary>
         /// <param name="year">Expense year of creation</param>
-        /// <param name="tag">Expense's tag</param>
+        /// <param name="label">Expense's label</param>
         /// <param name="dossierName">the destination dossier. If it is null or empty, the expense is sent to
         /// <c>UNPROCESSED</c> directory otherwise it is sent to the dossier</param>
         /// <returns>A Unix type folder destination path in Dropbox</returns>
         /// <exception cref="IndexOutOfRangeException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        private string GenerateExpenseTagDestinationPath(int year, string tag, string? dossierName = null)
+        private string GenerateLabeledExpenseDestinationPath(int year, string label, string? dossierName = null)
         {
             if (year < 0) throw new IndexOutOfRangeException(nameof(year));
-            if (string.IsNullOrEmpty(tag)) throw new ArgumentNullException(nameof(tag));
+            if (string.IsNullOrEmpty(label)) throw new ArgumentNullException(nameof(label));
 
             if (string.IsNullOrEmpty(dossierName))
             {
@@ -679,7 +679,7 @@ namespace DropboxSync.BLL.Services
                     year.ToString(),
                      "UNPROCESSED",
                       FileTypes.Expenses.ToString().ToUpper(),
-                      tag.ToUpper());
+                      label.ToUpper());
             }
             else
             {
@@ -689,7 +689,7 @@ namespace DropboxSync.BLL.Services
                     FileTypes.Dossiers.ToString().ToUpper(),
                     dossierName,
                     FileTypes.Expenses.ToString().ToUpper(),
-                    tag.ToUpper());
+                    label.ToUpper());
             }
         }
 
