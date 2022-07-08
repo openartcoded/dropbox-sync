@@ -84,8 +84,8 @@ services:
         AMQP_HOST: # artemis
         AMQP_PORT: # 61616
         AMQP_QUEUE: # backend-event
-        DROPBOX_API_KEY: # Replace this value with your API KEY
-        DROPBOX_API_SECRET: # Replace this value with your API Secret
+        DROPBOX_API_KEY: # Replace this value with your dropbox API KEY
+        DROPBOX_API_SECRET: # Replace this value with your dropbox API Secret
         DROPBOX_CODE: # Replace this value with the code received by Dropbox. For example: PgYD8ACqPWcAAAAAAAAATtMVR0SsNdK5hp1f-GHBl7M
         DROPBOX_CONFIG_PATH: # Choose a path for the config file like this "/app/config". DON'T FORGET THE CHANGE THE VOLUME'S NAME TOO
         API_BACKEND_URL: # Set your API Backend URL. Example : "http://api-backend"
@@ -93,9 +93,9 @@ services:
         API_CLIENT_SECRET: # Replace with your API Client's secret key. Example : "duzp0kzwDHSS2nSO46P3GBSsNnQbx8L3"
         API_TOKEN_URL: # Replace it with the keycloak's token url. Example : "http://keycloak:8080/realms/Artcoded/protocol/openid-connect/token"
         ZIP_PASSWORD: # The password assigned to the Zip file generated on dossier closure
-        FILE_DOWNLOAD_DIR: # THE PATH MUST START WITH "/": Example "/data"
+        FILE_DOWNLOAD_DIR: # The directory in which the event associated files are going to be save locally THE PATH MUST START WITH "/": Example "/data"
         DROPBOX_DATABASE_NAME: # Should a name for the SQLite db file. Example : "DropboxSyncDatabase"
-        DROPBOX_APPDATA_PATH: # THE PATH MUST START WITH "/". Example : "/db"
+        DROPBOX_APPDATA_PATH: # The folder in which the database and configuration is saved. This variable can be the same as 'DROPBOX_CONFIG_PATH' THE PATH MUST START WITH "/". Example : "/db"
         DROPBOX_CONFIG_FILE_NAME: # Choose a file name for the config file. By default it is going to be "dropbox-sync-configuration.json"
         DROPBOX_ROOT_FOLDER: # THE PATH MUST START WITH "/". Example : "/OPENARTCODED". It represents the root folder in Dropbox
         MAIL_RECEIVER_ADDRESS: # The email address on which you want to send the warning email
@@ -112,9 +112,11 @@ services:
         - ./config/dropbox-sync:/app/config
         - ./data/dropbox-data:/data
         - ./data/dropbox-db:/db
+        # If you choose the same folder for DROPBOX_CONFIG_PATH and DROPBOX_APPDATA_PATH make sure you only map it once 
 ```
 
-**For `DROPBOX_APPDATA_PATH` and `DROPBOX_CONFIG_PATH` DO NOT CHOOSE A ROOT PATH.**
+**FOR `DROPBOX_APPDATA_PATH` and `DROPBOX_CONFIG_PATH` DO NOT CHOOSE A ROOT PATH.**
+**DO NOT FORGET TO MAP THE VOLUME CORRECTLY ACCORDING TO THE ENVIRONMENT VARIABLES**
 
 Even if the container has access to these paths, it is better to have a user accessible path.
 
