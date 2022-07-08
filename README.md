@@ -92,23 +92,37 @@ services:
         API_BACKEND_ID: # Set your API's Backend ID. Example : "service-account-download"
         API_CLIENT_SECRET: # Replace with your API Client's secret key. Example : "duzp0kzwDHSS2nSO46P3GBSsNnQbx8L3"
         API_TOKEN_URL: # Replace it with the keycloak's token url. Example : "http://keycloak:8080/realms/Artcoded/protocol/openid-connect/token"
+        ZIP_PASSWORD: # The password assigned to the Zip file generated on dossier closure
         FILE_DOWNLOAD_DIR: # THE PATH MUST START WITH "/": Example "/data"
         DROPBOX_DATABASE_NAME: # Should a name for the SQLite db file. Example : "DropboxSyncDatabase"
         DROPBOX_APPDATA_PATH: # THE PATH MUST START WITH "/". Example : "/db"
         DROPBOX_CONFIG_FILE_NAME: # Choose a file name for the config file. By default it is going to be "dropbox-sync-configuration.json"
-        DROPBOX_ROOT_FOLDER: # THE PATH MUST START WITH "/". Example : "/OPENARTCODED"
+        DROPBOX_ROOT_FOLDER: # THE PATH MUST START WITH "/". Example : "/OPENARTCODED". It represents the root folder in Dropbox
+        MAIL_RECEIVER_ADDRESS: # The email address on which you want to send the warning email
+        MAIL_SENDER_EMAIL: # The email address from which the mail must be sent
+        MAIL_SENDER_PASSWORD: # The sender email address's password
+        MAIL_SENDER_SERVER: # The server from which the email is sent
+        MAIL_SENDER_PORT: # The mail sender's server's port
+        MAIL_SENDER_SSL_ENABLE: # Enable of disable the SSL support for the mail sender server. The value must be either `true` or `false`
+        FAILED_QUEUE_MONITORING_TIMER_MINUTES: # The frequence in minutes at which the service start to verify the failed queue
+        FAILED_QUEUE_NAME: # The name of the queue to which the failed messages from backend-event are sent
+
     volumes:
-        # The mapped volumes for data et db must be the same as DROPBOX_CONFIG_PATH and FILE_DOWNLOAD_DIR and DROPBOX_APPDATA_PATH 
+        # The mapped volumes for data et db must be the same as DROPBOX_CONFIG_PATH and FILE_DOWNLOAD_DIR and DROPBOX_APPDATA_PATH
         - ./config/dropbox-sync:/app/config
         - ./data/dropbox-data:/data
         - ./data/dropbox-db:/db
 ```
 
+**For `DROPBOX_APPDATA_PATH` and `DROPBOX_CONFIG_PATH` DO NOT CHOOSE A ROOT PATH.**
+
+Even if the container has access to these paths, it is better to have a user accessible path.
+
 ## Startup
 
 Once every precedent steps are done, you will just need to do one more thing before starting the app.
 
-Follow the next link (don't forget to change de [API_KEY] text with your Dropbox's app API Key). 
+Follow the next link (don't forget to change de [API_KEY] text with your Dropbox's app API Key).
 
 `https://www.dropbox.com/oauth2/authorize?client_id=[API_KEY]&response_type=code&token_access_type=offline`
 

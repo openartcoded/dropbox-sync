@@ -239,7 +239,7 @@ namespace DropboxSync.UIL
         /// </summary>
         public async Task FailedQueueMonitoringAsync()
         {
-            string? timerMinutes = Environment.GetEnvironmentVariable("FAILED_QUEUE_MONITORING_TIMER") ??
+            string? timerMinutes = Environment.GetEnvironmentVariable("FAILED_QUEUE_MONITORING_TIMER_MINUTES") ??
                 "10";
 
             if (!double.TryParse(timerMinutes, out double minutes))
@@ -269,7 +269,7 @@ namespace DropboxSync.UIL
 
             ReceiverLink? receiverLink = _session.CreateReceiver("receiver" + Guid.NewGuid(), new Source()
             {
-                Address = "dropbox-sync-failed",
+                Address = Environment.GetEnvironmentVariable("FAILED_QUEUE_NAME") ?? "backend-failed-events",
                 Capabilities = new[]
                 {
                     new Symbol("queue")
