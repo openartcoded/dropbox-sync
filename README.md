@@ -22,6 +22,8 @@ Select **Scoped access**, normally there is no other choice, but it might change
 
 Here you can choose either a single folder that is going to be created for the app or the full dropbox meaning all folders in your Dropbox.
 
+The single folder system creates a root folder for the app IN WHICH all the service's operation are going to be processed.
+
 ![Dropbox Access Type](https://user-images.githubusercontent.com/56565073/169829529-e1589c2f-531d-4f63-adc2-7ee1d866676a.png)
 
 #### Name your app
