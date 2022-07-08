@@ -120,7 +120,7 @@ services:
 **FOR `DROPBOX_APPDATA_PATH` and `DROPBOX_CONFIG_PATH` DO NOT CHOOSE A ROOT PATH.**
 **DO NOT FORGET TO MAP THE VOLUME CORRECTLY ACCORDING TO THE ENVIRONMENT VARIABLES**
 
-Even if the container has access to these paths, it is better to have a user accessible path.
+Even if the container has access to these paths, it is better to have a "user accessible" path.
 
 ## Startup
 
