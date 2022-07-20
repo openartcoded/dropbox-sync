@@ -119,7 +119,7 @@ namespace DropboxSync.BLL.Services
 
             _dropboxClient = new DropboxClient(_dropboxConfig.AccessToken);
 
-            if (!CheckDropboxClient()) throw new Exception($"An error occured during Dropbox Client checkout. Please read the precedent " +
+            if (!CheckDropboxClient()) throw new Exception($"An error occurred during Dropbox Client checkout. Please read the precedent " +
                 $"logs to understand the error");
 
             if (!AsyncHelper.RunSync(VerifyRootFolder)) throw new DropboxRootFolderMissingException(nameof(ROOT_FOLDER));
@@ -157,9 +157,9 @@ namespace DropboxSync.BLL.Services
 
             string dropboxId = dropboxUploadResult.Id.Substring(dropboxUploadResult.Id.IndexOf(':') + 1);
 
-            DropboxSavedFile finalOuput = new DropboxSavedFile(dropboxId, dropboxUploadResult.PathDisplay);
+            DropboxSavedFile finalOutput = new DropboxSavedFile(dropboxId, dropboxUploadResult.PathDisplay);
 
-            return finalOuput;
+            return finalOutput;
         }
 
         /// <summary>
@@ -175,19 +175,29 @@ namespace DropboxSync.BLL.Services
 
             string completeFolder = GenerateDossierFolderPath(createdAt.Year, dossierName);
 
-            CreateFolderResult createFolderResult = await _dropboxClient.Files.CreateFolderV2Async(completeFolder);
-
-            if (!createFolderResult.Metadata.IsFolder)
+            try
             {
-                _logger.LogError("{date} | Something was created but not a folder at path {dropboxPath}",
-                    DateTime.Now, createFolderResult.Metadata.PathDisplay);
+                CreateFolderResult createFolderResult = await _dropboxClient.Files.CreateFolderV2Async(completeFolder);
+
+                if (!createFolderResult.Metadata.IsFolder)
+                {
+                    _logger.LogError("{date} | Something was created but not a folder at path {dropboxPath}",
+                        DateTime.Now, createFolderResult.Metadata.PathDisplay);
+                    return false;
+                }
+
+                _logger.LogInformation("{date} | Successfully created folder for dossier \"{dossierName}\" at path {dropboxFolderPath}",
+                    DateTime.Now, dossierName, createFolderResult.Metadata.PathDisplay);
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("{date} | An exception was throw during Dossier creation! : {e}",
+                    DateTime.Now, e.Message);
+
                 return false;
             }
-
-            _logger.LogInformation("{date} | Successfully created folder for dossier \"{dossierName}\" at path {dropboxFolderPath}",
-                DateTime.Now, dossierName, createFolderResult.Metadata.PathDisplay);
-
-            return true;
         }
 
         /// <summary>
@@ -609,7 +619,9 @@ namespace DropboxSync.BLL.Services
         /// <param name="year">File creation year</param>
         /// <param name="dossierName">Dossier name</param>
         /// <param name="fileType">File type</param>
-        /// <returns>Dropbox's absolute path to the <paramref name="fileType"/> folder in dossier named <paramref name="dossierName"/></returns>
+        /// <returns>
+        /// Dropbox's absolute path to the <paramref name="fileType"/> folder in dossier named <paramref name="dossierName"/>
+        /// </returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidEnumValueException"></exception>
@@ -630,8 +642,8 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
-        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename seperated by
-        /// <paramref name="seperator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c>
+        /// Generate a name for the file to save in Dropbox. The name is composed of the the date and the filename separated by
+        /// <paramref name="separator"/>. If at date <c>2022-10-22</c> at <c>18:42</c> a file with name <c>MyFilesName.pdf</c>
         /// is created, then the generated name would look like this.
         /// <code>
         /// 2022.10.22 1842-MyFilesName.pdf
@@ -639,12 +651,12 @@ namespace DropboxSync.BLL.Services
         /// </summary>
         /// <param name="fileName">File's complete name. The filename must respect the Regex</param>
         /// <param name="createdAt"></param>
-        /// <param name="seperator"></param>
+        /// <param name="separator"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="InvalidFileNameException"></exception>
-        private string GenerateDropboxFileName(string fileName, DateTime createdAt, char seperator = '-')
+        private string GenerateDropboxFileName(string fileName, DateTime createdAt, char separator = '-')
         {
             fileName = fileName.Trim();
 
@@ -652,7 +664,7 @@ namespace DropboxSync.BLL.Services
             if (fileName.StringMatchFileRegEx()) throw new InvalidFileNameException(nameof(fileName));
             if (createdAt > DateTime.Now) throw new ArgumentOutOfRangeException(nameof(DateTime));
 
-            return string.Join(seperator, createdAt.ToString("yyyy.MM.dd HHmm"), fileName);
+            return string.Join(separator, createdAt.ToString("yyyy.MM.dd HHmm"), fileName);
         }
 
         /// <summary>
@@ -736,11 +748,11 @@ namespace DropboxSync.BLL.Services
                 return false;
             }
 
-            bool firstOccurence = true;
+            bool firstOccurrence = true;
 
             do
             {
-                if (!firstOccurence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
+                if (!firstOccurrence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
 
                 foreach (Metadata file in listFolderResult.Entries)
                 {
@@ -774,7 +786,8 @@ namespace DropboxSync.BLL.Services
         }
 
         /// <summary>
-        /// Verify if the folder at full dropbox path <paramref name="folderFullPath"/> exist in Dropbox. If <paramref name="createIfDontExist"/>
+        /// Verify if the folder at full dropbox path <paramref name="folderFullPath"/> exist in Dropbox.
+        /// If <paramref name="createIfDontExist"/>
         /// is <c>true</c> then the folder is created.
         /// </summary>
         /// <param name="folderFullPath">
@@ -785,8 +798,8 @@ namespace DropboxSync.BLL.Services
         /// </param>
         /// <param name="createIfDontExist">If <c>true</c>, creates the folder at the researched destination</param>
         /// <returns>
-        /// <c>null</c> if listing at path <see cref="ROOT_FOLDER"/> failed or if folder isn't found and <paramref name="createIfDontExist"/> is false.
-        /// Otherwise returns the Dropbox's required folder's path.
+        /// <c>null</c> if listing at path <see cref="ROOT_FOLDER"/> failed or if folder isn't found and
+        /// <paramref name="createIfDontExist"/> is false. Otherwise returns the Dropbox's required folder's path.
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
         private async Task<string?> VerifyFolderExist(string folderFullPath, bool createIfDontExist = false)
@@ -800,18 +813,18 @@ namespace DropboxSync.BLL.Services
                 return null;
             }
 
-            bool firstOccurence = true;
+            bool firstOccurrence = true;
 
             do
             {
-                if (!firstOccurence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
+                if (!firstOccurrence) listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(listFolderResult.Cursor);
 
                 foreach (Metadata metadata in listFolderResult.Entries)
                 {
                     if (metadata.IsFolder && metadata.PathDisplay.Equals(folderFullPath)) return metadata.AsFolder.PathDisplay;
                 }
 
-                firstOccurence = false;
+                firstOccurrence = false;
             }
             while (listFolderResult.HasMore);
 
@@ -870,11 +883,11 @@ namespace DropboxSync.BLL.Services
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "{date} | An exception occured during Dropbox SDK checkout.", DateTime.Now);
+                _logger.LogError(e, "{date} | An exception occurred during Dropbox SDK checkout.", DateTime.Now);
                 return false;
             }
 
-            _logger.LogWarning("{date} | Something wrong happened during echo check. More informations are needed", DateTime.Now);
+            _logger.LogWarning("{date} | Something wrong happened during echo check. More information are needed", DateTime.Now);
             return false;
         }
 
