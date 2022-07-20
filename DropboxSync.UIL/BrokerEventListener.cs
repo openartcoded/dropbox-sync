@@ -229,16 +229,6 @@ namespace DropboxSync.UIL
                         SendToFailedQueue(textMessage, brokerEvent);
                     }
 
-                    // if (EventRedirection(brokerEvent, textMessage))
-                    // {
-                    //     // When a message is successfully treated, a ACK is sent to notify the broker
-                    //     _logger.LogInformation("{date} | Event {eventName} treated with success!", DateTime.Now, eventModel.EventName);
-                    // }
-                    // else
-                    // {
-                    //     SendToFailedQueue(textMessage, brokerEvent);
-                    // }
-
                     receiver.Accept(message);
                 }
             }
@@ -341,7 +331,6 @@ namespace DropboxSync.UIL
 
                 BrokerEvent eventType = (BrokerEvent)brokerEventParseResult;
 
-                // bool redirectionResult = Task.Run<bool>(() => EventRedirection(eventType, failedEvent.MessageJson)).Result;
                 bool redirectionResult = Task.Run<bool>(() =>
                     _eventManagerLocator.RedirectToManager(failedEvent.MessageJson)).Result;
 
