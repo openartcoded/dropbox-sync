@@ -193,7 +193,8 @@ namespace DropboxSync.BLL.Services
             }
             catch (ApiException<CreateFolderError> e)
             {
-                _logger.LogError("{date} | The Dossier folder creation failed : {e}", DateTime.Now, e.Message);
+                _logger.LogError("{date} | The Dossier folder creation failed, please use another name : {e}",
+                    DateTime.Now, e.Message);
                 return false;
             }
             catch (Exception e)
