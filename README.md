@@ -22,6 +22,8 @@ Select **Scoped access**, normally there is no other choice, but it might change
 
 Here you can choose either a single folder that is going to be created for the app or the full dropbox meaning all folders in your Dropbox.
 
+The single folder system creates a root folder for the app IN WHICH all the service's operation are going to be processed.
+
 ![Dropbox Access Type](https://user-images.githubusercontent.com/56565073/169829529-e1589c2f-531d-4f63-adc2-7ee1d866676a.png)
 
 #### Name your app
@@ -84,31 +86,47 @@ services:
         AMQP_HOST: # artemis
         AMQP_PORT: # 61616
         AMQP_QUEUE: # backend-event
-        DROPBOX_API_KEY: # Replace this value with your API KEY
-        DROPBOX_API_SECRET: # Replace this value with your API Secret
+        DROPBOX_API_KEY: # Replace this value with your dropbox API KEY
+        DROPBOX_API_SECRET: # Replace this value with your dropbox API Secret
         DROPBOX_CODE: # Replace this value with the code received by Dropbox. For example: PgYD8ACqPWcAAAAAAAAATtMVR0SsNdK5hp1f-GHBl7M
         DROPBOX_CONFIG_PATH: # Choose a path for the config file like this "/app/config". DON'T FORGET THE CHANGE THE VOLUME'S NAME TOO
         API_BACKEND_URL: # Set your API Backend URL. Example : "http://api-backend"
         API_BACKEND_ID: # Set your API's Backend ID. Example : "service-account-download"
         API_CLIENT_SECRET: # Replace with your API Client's secret key. Example : "duzp0kzwDHSS2nSO46P3GBSsNnQbx8L3"
         API_TOKEN_URL: # Replace it with the keycloak's token url. Example : "http://keycloak:8080/realms/Artcoded/protocol/openid-connect/token"
-        FILE_DOWNLOAD_DIR: # THE PATH MUST START WITH "/": Example "/data"
+        ZIP_PASSWORD: # The password assigned to the Zip file generated on dossier closure
+        FILE_DOWNLOAD_DIR: # The directory in which the event associated files are going to be save locally THE PATH MUST START WITH "/": Example "/data"
         DROPBOX_DATABASE_NAME: # Should a name for the SQLite db file. Example : "DropboxSyncDatabase"
-        DROPBOX_APPDATA_PATH: # THE PATH MUST START WITH "/". Example : "/db"
+        DROPBOX_APPDATA_PATH: # The folder in which the database and configuration is saved. This variable can be the same as 'DROPBOX_CONFIG_PATH' THE PATH MUST START WITH "/". Example : "/db"
         DROPBOX_CONFIG_FILE_NAME: # Choose a file name for the config file. By default it is going to be "dropbox-sync-configuration.json"
-        DROPBOX_ROOT_FOLDER: # THE PATH MUST START WITH "/". Example : "/OPENARTCODED"
+        DROPBOX_ROOT_FOLDER: # THE PATH MUST START WITH "/". Example : "/OPENARTCODED". It represents the root folder in Dropbox
+        MAIL_RECEIVER_ADDRESS: # The email address on which you want to send the warning email
+        MAIL_SENDER_EMAIL: # The email address from which the mail must be sent
+        MAIL_SENDER_PASSWORD: # The sender email address's password
+        MAIL_SENDER_SERVER: # The server from which the email is sent
+        MAIL_SENDER_PORT: # The mail sender's server's port
+        MAIL_SENDER_SSL_ENABLE: # Enable of disable the SSL support for the mail sender server. The value must be either `true` or `false`
+        FAILED_QUEUE_MONITORING_TIMER_MINUTES: # The frequence in minutes at which the service start to verify the failed queue
+        FAILED_QUEUE_NAME: # The name of the queue to which the failed messages from backend-event are sent
+
     volumes:
-        # The mapped volumes for data et db must be the same as DROPBOX_CONFIG_PATH and FILE_DOWNLOAD_DIR and DROPBOX_APPDATA_PATH 
+        # The mapped volumes for data et db must be the same as DROPBOX_CONFIG_PATH and FILE_DOWNLOAD_DIR and DROPBOX_APPDATA_PATH
         - ./config/dropbox-sync:/app/config
         - ./data/dropbox-data:/data
         - ./data/dropbox-db:/db
+        # If you choose the same folder for DROPBOX_CONFIG_PATH and DROPBOX_APPDATA_PATH make sure you only map it once 
 ```
+
+**FOR `DROPBOX_APPDATA_PATH` and `DROPBOX_CONFIG_PATH` DO NOT CHOOSE A ROOT PATH.**
+**DO NOT FORGET TO MAP THE VOLUME CORRECTLY ACCORDING TO THE ENVIRONMENT VARIABLES**
+
+Even if the container has access to these paths, it is better to have a "user accessible" path.
 
 ## Startup
 
 Once every precedent steps are done, you will just need to do one more thing before starting the app.
 
-Follow the next link (don't forget to change de [API_KEY] text with your Dropbox's app API Key). 
+Follow the next link (don't forget to change de [API_KEY] text with your Dropbox's app API Key).
 
 `https://www.dropbox.com/oauth2/authorize?client_id=[API_KEY]&response_type=code&token_access_type=offline`
 
